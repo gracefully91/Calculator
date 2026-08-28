@@ -1670,6 +1670,11 @@ import { solutionCount } from '../core/rootFinder'
 const SEARCH_RANGE = [-8, 8]
 
 export function LinkedFunctionPanel({ pieces, params, t, traceOn = false }) {
+  // 구현 노트 (Task 4 코드리뷰에서 발견): buildPiecewiseFunction은 Task 4부터
+  // 컴파일 실패 시 즉시 throw하도록 바뀌었다. 이 컴포넌트는 pieces를 validatePiecewise
+  // 없이 그대로 넘기므로, 잘못된 수식이 여기 도달하면 useMemo 안에서 동기적으로 throw되어
+  // 렌더링이 깨질 수 있다. Task 15 구현 시 반드시 try/catch로 감싸 에러 상태를 렌더링하거나,
+  // Left 패널과 동일하게 validatePiecewise를 먼저 거치도록 해야 한다 (Panel.jsx 패턴 참고).
   const fn = useMemo(() => buildPiecewiseFunction({ type: 'piecewise', pieces }, params), [pieces, params])
   const count = useMemo(() => solutionCount(fn, t, SEARCH_RANGE), [fn, t])
 
