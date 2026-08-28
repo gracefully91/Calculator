@@ -4,7 +4,17 @@ import { create } from 'zustand'
 // whole domain, so Panel (Task 11) always has a well-formed row to render/edit
 // and validatePiecewise (src/core/functionSchema.js) never rejects the initial
 // state (an empty `expr` is explicitly invalid there).
-const DEFAULT_LEFT_PIECES = [{ expr: 'x', domain: [null, null], closedAt: { left: null, right: null } }]
+//
+// `id` is a stable identity for React's row keys in Panel.jsx -- it's not
+// part of the piecewise function schema (validatePiecewise/buildPiecewiseFunction
+// only read expr/domain/closedAt and ignore it) so it survives untouched
+// through updatePiece's `{ ...p, ...patch }` spreads. Without it, Panel keyed
+// rows on array index, and deleting a piece shifted every later row's index
+// down, causing React to reuse a EquationInput CodeMirror instance across a
+// slot change -- the displayed value stayed correct (it's a controlled prop),
+// but cursor/selection/scroll/undo-history are held inside CodeMirror's own
+// EditorView state, outside that prop, and silently carried over.
+const DEFAULT_LEFT_PIECES = [{ id: 1, expr: 'x', domain: [null, null], closedAt: { left: null, right: null } }]
 
 export const useAppStore = create((set) => ({
   // t: the shared value driving both the left graph's y=t line and the right

@@ -12,7 +12,10 @@ import { buildPiecewiseFunction } from '../core/piecewiseFunction'
 // `false`), so this doesn't change behavior once the user gives the piece a
 // finite bound -- it just avoids showing "closed" checkboxes pre-checked for
 // a boundary that doesn't exist yet. Matches store.js's DEFAULT_LEFT_PIECES.
-const EMPTY_PIECE = { expr: 'x', domain: [null, null], closedAt: { left: null, right: null } }
+// `id` is assigned separately per call in addPiece() (derived from the
+// current pieces, not baked into this shape), since every added piece needs
+// a distinct one.
+const EMPTY_PIECE_SHAPE = { expr: 'x', domain: [null, null], closedAt: { left: null, right: null } }
 
 // GraphCanvas's default viewport (see DEFAULT_VIEW in GraphCanvas.jsx) so an
 // unbounded piece's curve still draws across the initial visible window.
@@ -67,7 +70,13 @@ export function Panel({ pieces, onPiecesChange, params }) {
   }
 
   function addPiece() {
-    onPiecesChange([...pieces, { ...EMPTY_PIECE }])
+    // Derive the next id from what's already present rather than a module-level
+    // counter, so it stays correct regardless of how many Panel instances have
+    // mounted before this one, and regardless of what ids the incoming `pieces`
+    // (e.g. loaded from the store, or from pieces created before ids existed)
+    // already carry.
+    const nextId = Math.max(0, ...pieces.map((p) => p.id ?? 0)) + 1
+    onPiecesChange([...pieces, { id: nextId, ...EMPTY_PIECE_SHAPE }])
   }
 
   function removePiece(index) {
@@ -83,7 +92,14 @@ export function Panel({ pieces, onPiecesChange, params }) {
       {pieces.map((piece, i) => {
         const [min, max] = piece.domain
         return (
-          <div key={i} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          // Key on the piece's stable id, not its array index: deleting an
+          // earlier piece shifts every later index down, and an index key
+          // would make React reuse each shifted-into slot's EquationInput
+          // instance -- carrying over CodeMirror-internal state (cursor,
+          // selection, scroll, undo history) that lives outside the
+          // controlled `value` prop. Fall back to index only for pieces
+          // built before `id` existed (e.g. older test fixtures).
+          <div key={piece.id ?? i} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             <EquationInput
               label={`piece expression ${i + 1}`}
               value={piece.expr}

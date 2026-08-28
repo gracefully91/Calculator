@@ -84,6 +84,45 @@ describe('Panel — piecewise editing', () => {
     expect(lastMaxCall[0].domain[1]).toBeNull()
   })
 
+  it('assigns each added piece a fresh id distinct from every existing piece', async () => {
+    const onPiecesChange = vi.fn()
+    const initial = [
+      { id: 5, expr: 'x', domain: [null, 2], closedAt: { left: null, right: true } },
+      { id: 2, expr: 'x^2', domain: [2, null], closedAt: { left: false, right: null } },
+    ]
+    render(<Panel pieces={initial} onPiecesChange={onPiecesChange} params={{}} />)
+    await userEvent.click(screen.getByRole('button', { name: /add piece/i }))
+    const next = onPiecesChange.mock.calls[0][0]
+    expect(next).toHaveLength(3)
+    const newPiece = next[2]
+    expect(newPiece.id).toBeDefined()
+    expect(newPiece.id).not.toBe(5)
+    expect(newPiece.id).not.toBe(2)
+  })
+
+  it('preserves each piece row\'s own editor instance (not just its slot) when an earlier piece is deleted', async () => {
+    // Regression test for keying piece rows on array index: deleting piece 1
+    // shifts piece 2 into slot 0. With an index key, React would reuse piece
+    // 1's old row (same component instance, same underlying CodeMirror
+    // EditorView) to now display piece 2's data -- carrying over cursor/
+    // selection/undo-history state that lives inside CodeMirror, outside the
+    // controlled `value` prop, from whatever used to occupy that slot. Keying
+    // on the piece's stable `id` instead means piece 2's own row/instance
+    // survives the deletion, just re-labeled for its new position.
+    const onChangeSpy = vi.fn()
+    const initial = [
+      { id: 1, expr: 'x', domain: [null, 2], closedAt: { left: null, right: true } },
+      { id: 2, expr: 'x^2', domain: [2, null], closedAt: { left: false, right: null } },
+    ]
+    render(<StatefulPanel initialPieces={initial} onChangeSpy={onChangeSpy} />)
+
+    const piece2EditorBefore = screen.getByLabelText(/piece expression 2/i)
+    await userEvent.click(screen.getAllByRole('button', { name: /삭제|remove/i })[0])
+
+    const soleEditor = screen.getByLabelText(/piece expression 1/i)
+    expect(soleEditor).toBe(piece2EditorBefore)
+  })
+
   it('renders the 52-problem two pieces without crashing and clips each curve to its own domain', () => {
     // 52번 문제: left cubic on (-inf, 2], right parabola on [2, +inf), open at x=2 on the right
     const pieces = [

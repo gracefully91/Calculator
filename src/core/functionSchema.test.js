@@ -16,6 +16,24 @@ describe('validatePiecewise', () => {
     expect(result.normalized.pieces).toHaveLength(2)
   })
 
+  it('tolerates an extra `id` field on pieces (Panel.jsx row-keying identity) without erroring or leaking it into normalized output', () => {
+    // Panel.jsx (Task 11 code review) tags each piece with a stable `id` for
+    // React row keys -- not part of this schema. Confirm that field passes
+    // through harmlessly: normalizedPieces is built as a literal
+    // { expr, domain, closedAt } object, so an unrecognized `id` on the input
+    // is simply never read, not copied into the normalized piece, and
+    // doesn't trip any validation check.
+    const withIds = {
+      type: 'piecewise',
+      pieces: [
+        { id: 7, expr: 'x', domain: [null, null], closedAt: {} },
+      ],
+    }
+    const result = validatePiecewise(withIds)
+    expect(result.ok).toBe(true)
+    expect(result.normalized.pieces[0]).not.toHaveProperty('id')
+  })
+
   it('rejects a definition with no pieces', () => {
     const result = validatePiecewise({ type: 'piecewise', pieces: [] })
     expect(result.ok).toBe(false)
