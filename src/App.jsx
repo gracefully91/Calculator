@@ -1,17 +1,15 @@
 import { useAppStore } from './state/store'
 import { Panel } from './components/Panel'
 import { LinkBar } from './components/LinkBar'
+import { LinkedFunctionPanel } from './components/LinkedFunctionPanel'
 
-// The design doc's Task 14 App.jsx reference also renders a right-hand
-// LinkedFunctionPanel next to Panel, fed by the same t/pieces/params. That
-// component is explicitly Task 15's deliverable and doesn't exist yet, so
-// building even a stub of it here would be scope creep into the next task.
-// This task's actual deliverable -- the draggable y=t line on GraphCanvas
-// and the LinkBar readout -- is fully exercisable with just the left Panel:
-// wire horizontalLineT/onTChange through to it so dragging the line updates
-// the shared store `t`, and render LinkBar below to show that value updating
-// live. Task 15 adds the right panel alongside this one; nothing here needs
-// to change for that, it's an additive JSX change to the returned div.
+// The right-hand panel (LinkedFunctionPanel, Task 15) reads the exact same
+// leftPieces/params as the left Panel -- it isn't a second, independently
+// authored function. "Linked" means it's a live readout of how many times
+// y=t intersects the SAME left-hand curve the user is editing/dragging, not
+// a separate graph. Both panels are handed t/leftPieces/params straight from
+// the store (App.jsx owns no local state of its own), matching Task 14's
+// established prop-drilling pattern.
 export default function App() {
   const t = useAppStore((s) => s.t)
   const setT = useAppStore((s) => s.setT)
@@ -19,6 +17,8 @@ export default function App() {
   const setLeftPieces = useAppStore((s) => s.setLeftPieces)
   const params = useAppStore((s) => s.params)
   const setParam = useAppStore((s) => s.setParam)
+  const traceOn = useAppStore((s) => s.traceOn)
+  const toggleTrace = useAppStore((s) => s.toggleTrace)
 
   return (
     <div>
@@ -31,6 +31,13 @@ export default function App() {
           horizontalLineT={t}
           onTChange={setT}
         />
+        <div>
+          <label>
+            <input type="checkbox" checked={traceOn} onChange={toggleTrace} />
+            Trace On
+          </label>
+          <LinkedFunctionPanel pieces={leftPieces} params={params} t={t} traceOn={traceOn} />
+        </div>
       </div>
       <LinkBar t={t} />
     </div>
