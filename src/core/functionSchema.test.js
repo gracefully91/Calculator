@@ -109,6 +109,28 @@ describe('validatePiecewise', () => {
     expect(result.ok).toBe(false)
   })
 
+  it('rejects two pieces both implicitly closed (closedAt omitted/null) at a shared boundary point', () => {
+    // Same ill-defined-function scenario as the explicit-true test above, but via
+    // the *default* closedAt (omitted, normalized to null) on both sides. Per the
+    // established convention (Task 3's per-field defaulting, piecewiseFunction.js's
+    // contains()), null means closed, same as explicit true -- so this must be
+    // rejected too. Regression test for a gap where the overlap check used a
+    // truthy check (`closedAt.right && closedAt.left`) instead of `!== false`,
+    // silently letting this exact shape through as ok:true. A user who adds a
+    // piece via Panel's "조각 추가" (whose new piece defaults to
+    // closedAt: { left: null, right: null }) and only types matching domain
+    // bounds -- never touching a boundary checkbox -- would hit this.
+    const bothImplicitlyClosed = {
+      type: 'piecewise',
+      pieces: [
+        { expr: 'x', domain: [null, 2], closedAt: {} },
+        { expr: 'x+1', domain: [2, null], closedAt: {} },
+      ],
+    }
+    const result = validatePiecewise(bothImplicitlyClosed)
+    expect(result.ok).toBe(false)
+  })
+
   it('still accepts a shared boundary when only one side is closed', () => {
     // Regression guard for the fix above: exactly one side closed at the touching
     // point is a valid partition of the domain and must keep passing.

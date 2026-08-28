@@ -60,10 +60,20 @@ export function validatePiecewise(def) {
     const nextLo = sorted[i + 1].domain[0] ?? -Infinity
     if (currHi > nextLo) {
       errors.push(`pieces overlap between domain ending ${currHi} and next starting ${nextLo}`)
-    } else if (currHi === nextLo && sorted[i].closedAt.right && sorted[i + 1].closedAt.left) {
+    } else if (
+      currHi === nextLo &&
+      sorted[i].closedAt.right !== false &&
+      sorted[i + 1].closedAt.left !== false
+    ) {
       // The intervals themselves don't overlap, but if both pieces include the
       // shared boundary point (both closed there), that single x has two different
       // y-values — a genuinely ill-defined function, not just an adjacent pair.
+      // `!== false` (not a truthy check) because the normalized closedAt above
+      // defaults an unset side to `null`, and null means closed here — same
+      // convention as piecewiseFunction.js's contains() (a boundary is only
+      // excluded when its side is explicitly `false`). A truthy check let two
+      // pieces both implicitly closed (closedAt: null on both sides) at a
+      // shared boundary slip past this guard undetected.
       errors.push(`pieces both include boundary point ${currHi} (both closed there)`)
     }
   }
