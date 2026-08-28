@@ -187,6 +187,8 @@ export function niceGridStep(range, targetTicks = 8) {
 }
 ```
 
+> **구현 노트**: 위 참조 코드의 `targetTicks` 기본값(8)은 자체 테스트를 통과시키지 못하는 버그였음. 실제 구현은 `targetTicks=5`를 사용함 (`src/core/viewport.js` 참고).
+
 **Step 4: 통과 확인**
 
 ```bash
