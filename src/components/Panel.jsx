@@ -29,7 +29,14 @@ const FALLBACK_MAX = 8
 // disagree about what an untouched parameter is worth.
 const DEFAULT_PARAM_VALUE = 1
 
-export function Panel({ pieces, onPiecesChange, params, onParamChange = () => {} }) {
+export function Panel({
+  pieces,
+  onPiecesChange,
+  params,
+  onParamChange = () => {},
+  horizontalLineT,
+  onTChange,
+}) {
   const parsed = useMemo(() => {
     const validation = validatePiecewise({ type: 'piecewise', pieces })
     return validation.ok ? { def: validation.normalized } : { error: validation.errors.join('; ') }
@@ -142,9 +149,16 @@ export function Panel({ pieces, onPiecesChange, params, onParamChange = () => {}
     onPiecesChange(pieces.filter((_, i) => i !== index))
   }
 
+  // Only offer a draggable y=t line when the caller actually wants to be
+  // told about drags (App.jsx wires horizontalLineT/onTChange to the store's
+  // t/setT; Panel.test.jsx and other bare callers omit both, which must keep
+  // rendering GraphCanvas exactly as before -- no line, panning unaffected).
+  const horizontalLine =
+    typeof horizontalLineT === 'number' && onTChange ? { y: horizontalLineT, onDrag: onTChange } : undefined
+
   return (
     <div>
-      <GraphCanvas curves={curves} points={points} />
+      <GraphCanvas curves={curves} points={points} horizontalLine={horizontalLine} />
       <button type="button" aria-label="add piece" onClick={addPiece}>
         조각 추가
       </button>

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { useState } from 'react'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Panel } from './Panel'
 import { screenToWorld } from '../core/viewport'
@@ -343,5 +343,48 @@ describe('Panel — piecewise editing', () => {
       expect(arcCalls.at(-1).x).toBeCloseTo(275)
       expect(arcCalls.at(-1).y).toBeCloseTo(125)
     })
+  })
+})
+
+describe('Panel — horizontalLineT/onTChange pass-through to GraphCanvas', () => {
+  const initial = [{ expr: 'x', domain: [null, null], closedAt: { left: null, right: null } }]
+
+  it('dragging the y=t line calls onTChange with the new world y, not onPiecesChange', () => {
+    const onTChange = vi.fn()
+    const { container } = render(
+      <Panel
+        pieces={initial}
+        onPiecesChange={vi.fn()}
+        params={{}}
+        horizontalLineT={0}
+        onTChange={onTChange}
+      />
+    )
+    const canvas = container.querySelector('canvas')
+
+    // GraphCanvas defaults to a 400x400 canvas with the -8..8 default view,
+    // same as GraphCanvas.test.jsx's horizontalLine tests -- y=0 sits at
+    // screen y=200.
+    fireEvent.mouseDown(canvas, { clientX: 200, clientY: 200 })
+    fireEvent.mouseMove(canvas, { clientX: 200, clientY: 100 })
+    fireEvent.mouseUp(canvas, { clientX: 200, clientY: 100 })
+
+    expect(onTChange).toHaveBeenCalled()
+    // screenToWorld(view, 0, 100) -> y = -8 + ((400-100)/400)*16 = 4
+    expect(onTChange.mock.calls.at(-1)[0]).toBeCloseTo(4)
+  })
+
+  it('renders no draggable line, and drags pan as before, when horizontalLineT/onTChange are omitted', () => {
+    const onPiecesChange = vi.fn()
+    const { container } = render(<Panel pieces={initial} onPiecesChange={onPiecesChange} params={{}} />)
+    const canvas = container.querySelector('canvas')
+
+    // Should not throw, and should not somehow call onPiecesChange as a
+    // side effect of a plain canvas drag.
+    fireEvent.mouseDown(canvas, { clientX: 200, clientY: 200 })
+    fireEvent.mouseMove(canvas, { clientX: 210, clientY: 200 })
+    fireEvent.mouseUp(canvas, { clientX: 210, clientY: 200 })
+
+    expect(onPiecesChange).not.toHaveBeenCalled()
   })
 })
