@@ -20,11 +20,32 @@ export function validatePiecewise(def) {
         errors.push(`piece ${i}: invalid expression "${expr}" (${compileResult.error})`)
       }
     }
-    const domain = piece.domain ?? [null, null]
+    // domain must be a [min, max] tuple where each bound is either null (unbounded)
+    // or a finite number. Task 4's piecewiseFunction.js destructures
+    // `const [min, max] = piece.domain`, which throws a TypeError on anything that
+    // isn't array-like (e.g. domain: 5) — catch that shape mismatch here instead.
+    let domain = piece.domain ?? [null, null]
+    const isValidBound = (v) => v === null || (typeof v === 'number' && Number.isFinite(v))
+    if (!Array.isArray(domain) || domain.length !== 2 || !domain.every(isValidBound)) {
+      errors.push(`piece ${i}: domain must be a [min, max] tuple of null or finite numbers`)
+      domain = [null, null]
+    } else if (domain[0] !== null && domain[1] !== null && domain[0] > domain[1]) {
+      // An inverted domain (min > max) doesn't crash anything downstream, but it
+      // silently produces a piece whose interval is empty (never applies) — almost
+      // certainly a typo'd bound, so fail loudly instead of accepting a dead piece.
+      errors.push(`piece ${i}: domain min (${domain[0]}) must not exceed domain max (${domain[1]})`)
+    }
+
     return {
       expr,
       domain,
-      closedAt: piece.closedAt ?? { left: null, right: null },
+      // Default per-field, not the whole object: a partial closedAt like {} or
+      // { right: true } must not leave the other field as `undefined` — `undefined`
+      // isn't valid JSON and would silently drop out of a JSON.stringify round-trip.
+      closedAt: {
+        left: piece.closedAt?.left ?? null,
+        right: piece.closedAt?.right ?? null,
+      },
     }
   })
 
@@ -39,6 +60,11 @@ export function validatePiecewise(def) {
     const nextLo = sorted[i + 1].domain[0] ?? -Infinity
     if (currHi > nextLo) {
       errors.push(`pieces overlap between domain ending ${currHi} and next starting ${nextLo}`)
+    } else if (currHi === nextLo && sorted[i].closedAt.right && sorted[i + 1].closedAt.left) {
+      // The intervals themselves don't overlap, but if both pieces include the
+      // shared boundary point (both closed there), that single x has two different
+      // y-values — a genuinely ill-defined function, not just an adjacent pair.
+      errors.push(`pieces both include boundary point ${currHi} (both closed there)`)
     }
   }
 

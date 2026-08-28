@@ -59,4 +59,83 @@ describe('validatePiecewise', () => {
     const result2 = validatePiecewise(emptyExpr)
     expect(result2.ok).toBe(false)
   })
+
+  it('rejects a non-array domain instead of passing it through', () => {
+    // Task 4's piecewiseFunction.js does `const [min, max] = piece.domain`, which
+    // throws "5 is not iterable" on a non-array domain. Catch the shape mismatch here.
+    const result = validatePiecewise({
+      type: 'piecewise',
+      pieces: [{ expr: 'x', domain: 5, closedAt: {} }],
+    })
+    expect(result.ok).toBe(false)
+    expect(result.errors.length).toBeGreaterThan(0)
+  })
+
+  it('rejects a domain array with the wrong length or non-numeric bounds', () => {
+    const wrongLength = validatePiecewise({
+      type: 'piecewise',
+      pieces: [{ expr: 'x', domain: [null, 1, 2], closedAt: {} }],
+    })
+    expect(wrongLength.ok).toBe(false)
+
+    const nonNumeric = validatePiecewise({
+      type: 'piecewise',
+      pieces: [{ expr: 'x', domain: ['a', null], closedAt: {} }],
+    })
+    expect(nonNumeric.ok).toBe(false)
+  })
+
+  it('rejects an inverted domain (min > max)', () => {
+    // Doesn't crash anything, but silently describes an empty/dead piece that never
+    // applies — almost certainly a typo, so it should fail validation instead.
+    const result = validatePiecewise({
+      type: 'piecewise',
+      pieces: [{ expr: 'x', domain: [5, 1], closedAt: {} }],
+    })
+    expect(result.ok).toBe(false)
+  })
+
+  it('rejects two pieces that are both closed at a shared boundary point', () => {
+    // domain:[null,2] closed on the right AND domain:[2,null] closed on the left
+    // both include x=2, which would give x=2 two different y-values.
+    const bothClosed = {
+      type: 'piecewise',
+      pieces: [
+        { expr: 'x', domain: [null, 2], closedAt: { left: null, right: true } },
+        { expr: 'x+1', domain: [2, null], closedAt: { left: true, right: null } },
+      ],
+    }
+    const result = validatePiecewise(bothClosed)
+    expect(result.ok).toBe(false)
+  })
+
+  it('still accepts a shared boundary when only one side is closed', () => {
+    // Regression guard for the fix above: exactly one side closed at the touching
+    // point is a valid partition of the domain and must keep passing.
+    const oneClosedOneOpen = {
+      type: 'piecewise',
+      pieces: [
+        { expr: 'x', domain: [null, 2], closedAt: { left: null, right: true } },
+        { expr: 'x+1', domain: [2, null], closedAt: { left: false, right: null } },
+      ],
+    }
+    const result = validatePiecewise(oneClosedOneOpen)
+    expect(result.ok).toBe(true)
+  })
+
+  it('defaults closedAt per-field so a partial object does not leave undefined fields', () => {
+    // Whole-object defaulting (piece.closedAt ?? {...}) leaves the *other* field as
+    // undefined when only one field is provided, which breaks JSON.stringify
+    // round-tripping (undefined properties are dropped, not serialized as null).
+    const result = validatePiecewise({
+      type: 'piecewise',
+      pieces: [{ expr: 'x', domain: [null, null], closedAt: { right: true } }],
+    })
+    expect(result.ok).toBe(true)
+    expect(result.normalized.pieces[0].closedAt).toEqual({ left: null, right: true })
+    expect(JSON.parse(JSON.stringify(result.normalized.pieces[0].closedAt))).toEqual({
+      left: null,
+      right: true,
+    })
+  })
 })
