@@ -13,6 +13,10 @@ export function ParamSliders({ names, values, onChange }) {
           <input
             type="range"
             aria-label={`${name} slider`}
+            // Known Phase 1 limitation: fixed range/step, no way to type an
+            // exact value or exceed [-20, 20] -- fine for the 52-problem
+            // (a=3, b=6) but a later problem needing a larger magnitude
+            // would need this made configurable.
             min={-20}
             max={20}
             step={0.5}

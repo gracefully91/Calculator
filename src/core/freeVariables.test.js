@@ -19,4 +19,18 @@ describe('detectFreeVariables', () => {
     expect(() => detectFreeVariables(['a*(', '2*x'], ['x'])).not.toThrow()
     expect(detectFreeVariables(['a*(', '2*x'], ['x'])).toEqual([])
   })
+
+  it('deduplicates a free variable shared across multiple expressions instead of listing it once per expression', () => {
+    expect(detectFreeVariables(['a*x', 'a*x+1'], ['x'])).toEqual(['a'])
+  })
+
+  it('finds a free variable nested inside a function call argument, not just at the top level', () => {
+    expect(detectFreeVariables(['sin(a*x)'], ['x'])).toEqual(['a'])
+    // Also exercises a free variable passed as a plain argument (not part of
+    // an operator expression) to a nested, undefined function call -- the
+    // `parent.fn === n` structural check correctly excludes `f`/`g`
+    // themselves (the names being called, at any nesting depth) while still
+    // finding `a`, an ordinary argument.
+    expect(detectFreeVariables(['f(g(x), a)'], ['x'])).toEqual(['a'])
+  })
 })

@@ -2,7 +2,15 @@ import { parse, FunctionNode } from 'mathjs'
 
 // Names that resolve inside mathjs's own scope (built-in functions and
 // constants) even when nothing binds them in `boundNames` -- these should
-// never surface as "undefined parameter that needs a slider".
+// never surface as "undefined parameter that needs a slider". Note that for
+// a function name (abs/min/max/sqrt) this set is redundant with the
+// isFunctionName structural check below -- `abs` in `abs(x)` is already
+// excluded because it's a FunctionNode's `.fn`, not because it's listed
+// here. This set only does real work for the bare constants `pi`/`e`, which
+// appear as ordinary SymbolNodes with no enclosing FunctionNode to exclude
+// them structurally. It's kept for the function names too as a harmless,
+// explicit safety net in case one is ever referenced without being called
+// (e.g. passed as a value, which isFunctionName wouldn't catch).
 const BUILTIN_NAMES = new Set(['abs', 'min', 'max', 'sqrt', 'pi', 'e'])
 
 // Scans each expression string for SymbolNodes that are neither an
