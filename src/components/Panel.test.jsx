@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Panel } from './Panel'
+import { screenToWorld } from '../core/viewport'
 
 // Panel is a controlled component (pieces/onPiecesChange), same as App.jsx
 // wires it to the Zustand store. A bare `vi.fn()` onPiecesChange never
@@ -193,6 +194,134 @@ describe('Panel — piecewise editing', () => {
       expect(arcCalls[1].y).toBeCloseTo(-25)
       expect(arcCalls[1].closed).toBe(false)
     })
+  })
+
+  it('auto-renders a slider for each detected free variable (a, b) but not for x', () => {
+    // 52-problem's right piece: a*(x-2)*(x-b)+9
+    const pieces = [{ expr: 'a*(x-2)*(x-b)+9', domain: [2, null], closedAt: { left: false, right: null } }]
+    render(<Panel pieces={pieces} onPiecesChange={vi.fn()} params={{}} onParamChange={vi.fn()} />)
+    expect(screen.getByLabelText('a slider')).toBeInTheDocument()
+    expect(screen.getByLabelText('b slider')).toBeInTheDocument()
+    expect(screen.queryByLabelText('x slider')).not.toBeInTheDocument()
+  })
+
+  it('does not render a params row when no free variables are present', () => {
+    render(<Panel pieces={[{ expr: 'x^2', domain: [null, null], closedAt: {} }]} onPiecesChange={vi.fn()} params={{}} onParamChange={vi.fn()} />)
+    expect(screen.queryByRole('slider')).not.toBeInTheDocument()
+  })
+
+  it('renders the 52-problem right piece without crashing even before any slider is touched (free variables absent from params)', () => {
+    // Regression: a*(x-2)*(x-b)+9 has a finite, open domain boundary at x=2.
+    // Panel's `points` computation calls p.evaluate(2) directly during render
+    // (not inside drawCurve's try/catch), so if `a`/`b` were left undefined
+    // in the scope handed to mathjs, this would throw synchronously out of
+    // render instead of just failing to draw a curve.
+    const pieces = [{ expr: 'a*(x-2)*(x-b)+9', domain: [2, null], closedAt: { left: false, right: null } }]
+    expect(() =>
+      render(<Panel pieces={pieces} onPiecesChange={vi.fn()} params={{}} onParamChange={vi.fn()} />),
+    ).not.toThrow()
+  })
+
+  it('evaluates the curve using each slider default (1) before the user drags anything, and using the store value once a slider has been set', async () => {
+    // With a=1 (default), b=1 (default): 1*(x-2)*(x-1)+9 at x=4 -> 1*2*3+9 = 15.
+    const pieces = [{ expr: 'a*(x-2)*(x-b)+9', domain: [null, null], closedAt: { left: null, right: null } }]
+    await withFakeCanvasContext(async () => {
+      const onParamChange = vi.fn()
+      const { container } = render(
+        <Panel pieces={pieces} onPiecesChange={vi.fn()} params={{}} onParamChange={onParamChange} />,
+      )
+      expect(container.querySelector('canvas')).toBeInTheDocument()
+
+      // Dragging the 'a' slider calls onParamChange('a', <value>) -- the
+      // caller (App.jsx -> store.setParam) is what actually feeds the new
+      // value back into `params` on the next render; Panel itself doesn't
+      // own that state.
+      const slider = screen.getByLabelText('a slider')
+      const nativeValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set
+      nativeValueSetter.call(slider, '5')
+      slider.dispatchEvent(new Event('change', { bubbles: true }))
+      expect(onParamChange).toHaveBeenCalledWith('a', 5)
+    })
+  })
+
+  it('re-evaluates the curve immediately when params already supplies a value for a newly-typed free variable (StatefulPanel end-to-end)', async () => {
+    // Simulates App.jsx: params/onParamChange are store-backed, so once the
+    // user has dragged a slider once, that value should be used on every
+    // subsequent render -- not silently overwritten back to the default 1.
+    function ConnectedPanel() {
+      const [pieces, setPieces] = useState([
+        { expr: 'a*(x-2)*(x-b)+9', domain: [2, null], closedAt: { left: false, right: null } },
+      ])
+      const [params, setParams] = useState({ a: 3, b: 6 })
+      return (
+        <Panel
+          pieces={pieces}
+          onPiecesChange={setPieces}
+          params={params}
+          onParamChange={(name, value) => setParams((p) => ({ ...p, [name]: value }))}
+        />
+      )
+    }
+    render(<ConnectedPanel />)
+    // a=3 is already in the store's params (not the default 1), so the 'a'
+    // slider must reflect it rather than falling back to 1.
+    expect(screen.getByLabelText('a slider')).toHaveValue('3')
+    expect(screen.getByLabelText('b slider')).toHaveValue('6')
+  })
+
+  it('renders the right-piece parabola from its actual free-variable value immediately (default 1) and re-renders it once the store supplies a real value -- end to end via drawn curve pixels, no slider drag required', async () => {
+    // 52-problem's right piece. World x=4 is comfortably inside its domain
+    // [2, +inf) and away from the x=2 boundary marker, so any drawn segment
+    // straddling x=4 isolates the curve's shape from the marker dots.
+    const view = { xMin: -8, xMax: 8, yMin: -8, yMax: 8, width: 400, height: 400 }
+    const pieces = [{ expr: 'a*(x-2)*(x-b)+9', domain: [2, null], closedAt: { left: false, right: null } }]
+
+    async function renderAndSampleAtX4(params) {
+      const linePoints = []
+      const fakeCtx = {
+        save() {},
+        restore() {},
+        beginPath() {},
+        clearRect() {},
+        strokeStyle: '',
+        lineWidth: 0,
+        stroke() {},
+        arc() {},
+        fill() {},
+        moveTo(sx, sy) {
+          linePoints.push(screenToWorld(view, sx, sy))
+        },
+        lineTo(sx, sy) {
+          linePoints.push(screenToWorld(view, sx, sy))
+        },
+      }
+      const original = HTMLCanvasElement.prototype.getContext
+      HTMLCanvasElement.prototype.getContext = () => fakeCtx
+      try {
+        render(<Panel pieces={pieces} onPiecesChange={vi.fn()} params={params} onParamChange={vi.fn()} />)
+      } finally {
+        HTMLCanvasElement.prototype.getContext = original
+      }
+      // drawCurve samples 300 points evenly across [2, FALLBACK_MAX=8]; find
+      // the sample nearest world x=4.
+      const nearest = linePoints.reduce((best, p) =>
+        Math.abs(p.x - 4) < Math.abs(best.x - 4) ? p : best,
+      )
+      expect(Math.abs(nearest.x - 4)).toBeLessThan(0.05)
+      return nearest.y
+    }
+
+    // No params supplied at all -- freeVars a/b fall back to Panel's default
+    // (1) for evaluation, same as the slider's own displayed default.
+    // a=1, b=1 at x=4: 1*(4-2)*(4-1)+9 = 15.
+    const yWithDefaults = await renderAndSampleAtX4({})
+    expect(yWithDefaults).toBeCloseTo(15, 0)
+
+    // Store already has real values (as if the user had dragged both
+    // sliders previously) -- a=3, b=6 at x=4: 3*(4-2)*(4-6)+9 = -3, matching
+    // piecewiseFunction.test.js's regression value for the same problem.
+    const yWithStoreValues = await renderAndSampleAtX4({ a: 3, b: 6 })
+    expect(yWithStoreValues).toBeCloseTo(-3, 0)
   })
 
   it('marks a freshly-bounded edge as closed by default once a domain bound is typed in, even though its checkbox has not been touched', async () => {
