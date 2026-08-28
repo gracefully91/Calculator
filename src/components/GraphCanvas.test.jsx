@@ -75,4 +75,49 @@ describe('GraphCanvas', () => {
     expect(view.xMin).toBeCloseTo(-9.2)
     expect(view.xMax).toBeCloseTo(6.8)
   })
+
+  it('zooms in (narrower view, same center) on wheel with negative deltaY', () => {
+    const onCanvasClick = vi.fn()
+    const { container } = render(
+      <GraphCanvas curves={[]} points={[]} onCanvasClick={onCanvasClick} />
+    )
+    const canvas = container.querySelector('canvas')
+
+    fireEvent.wheel(canvas, { deltaY: -100 })
+    fireEvent.click(canvas)
+    const [, view] = onCanvasClick.mock.calls.at(-1)
+
+    // Default view is -8..8 (range 16) on both axes. deltaY < 0 -> scale
+    // 0.9, so halfW/halfH shrink from 8 to 7.2, centered on 0.
+    expect(view.xMin).toBeCloseTo(-7.2)
+    expect(view.xMax).toBeCloseTo(7.2)
+    expect(view.yMin).toBeCloseTo(-7.2)
+    expect(view.yMax).toBeCloseTo(7.2)
+    expect(view.xMax - view.xMin).toBeLessThan(16)
+    expect(view.yMax - view.yMin).toBeLessThan(16)
+    expect((view.xMin + view.xMax) / 2).toBeCloseTo(0)
+    expect((view.yMin + view.yMax) / 2).toBeCloseTo(0)
+  })
+
+  it('zooms out (wider view, same center) on wheel with positive deltaY', () => {
+    const onCanvasClick = vi.fn()
+    const { container } = render(
+      <GraphCanvas curves={[]} points={[]} onCanvasClick={onCanvasClick} />
+    )
+    const canvas = container.querySelector('canvas')
+
+    fireEvent.wheel(canvas, { deltaY: 100 })
+    fireEvent.click(canvas)
+    const [, view] = onCanvasClick.mock.calls.at(-1)
+
+    // deltaY > 0 -> scale 1.1, so halfW/halfH grow from 8 to 8.8, centered on 0.
+    expect(view.xMin).toBeCloseTo(-8.8)
+    expect(view.xMax).toBeCloseTo(8.8)
+    expect(view.yMin).toBeCloseTo(-8.8)
+    expect(view.yMax).toBeCloseTo(8.8)
+    expect(view.xMax - view.xMin).toBeGreaterThan(16)
+    expect(view.yMax - view.yMin).toBeGreaterThan(16)
+    expect((view.xMin + view.xMax) / 2).toBeCloseTo(0)
+    expect((view.yMin + view.yMax) / 2).toBeCloseTo(0)
+  })
 })
