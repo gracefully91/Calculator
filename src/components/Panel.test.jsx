@@ -133,4 +133,86 @@ describe('Panel — piecewise editing', () => {
     expect(container.querySelector('canvas')).toBeInTheDocument()
     expect(screen.queryByText(/error|invalid/i)).not.toBeInTheDocument()
   })
+
+  // jsdom's canvas has no real 2d context (GraphCanvas.jsx's effect bails
+  // out early on `ctx == null`), so the marker tests below install a fake
+  // context that just records `arc` calls and whether each was followed by
+  // `fill` (closed/filled dot) or `stroke` (open/hollow dot) -- enough to
+  // observe drawPointMarker's actual output without needing a real canvas.
+  // This exercises Panel's real `points` computation end to end (through
+  // GraphCanvas's draw effect), rather than mocking GraphCanvas itself.
+  async function withFakeCanvasContext(run) {
+    const arcCalls = []
+    let pending = null
+    const fakeCtx = {
+      save() {},
+      restore() {},
+      beginPath() {},
+      clearRect() {},
+      moveTo() {},
+      lineTo() {},
+      arc(x, y) {
+        pending = { x, y }
+        arcCalls.push(pending)
+      },
+      fill() {
+        if (pending) pending.closed = true
+        pending = null
+      },
+      stroke() {
+        if (pending) pending.closed = false
+        pending = null
+      },
+    }
+    const original = HTMLCanvasElement.prototype.getContext
+    HTMLCanvasElement.prototype.getContext = () => fakeCtx
+    try {
+      await run(arcCalls)
+    } finally {
+      HTMLCanvasElement.prototype.getContext = original
+    }
+  }
+
+  it('draws exactly one closed and one open boundary marker for the 52-problem, at the right coordinates', async () => {
+    // Same two pieces as the "renders ... without crashing" test above.
+    // Left piece is closed at x=2 (2*2^3-6*2+1 = 16-12+1 = 5); right piece
+    // is open at x=2 (3*(2-2)*(2-6)+9 = 0+9 = 9). Default view is
+    // xMin/xMax/yMin/yMax = -8/8/-8/8 over a 400x400 canvas, so world (2,5)
+    // -> screen (250, 75) and world (2,9) -> screen (250, -25).
+    const pieces = [
+      { expr: '2*x^3-6*x+1', domain: [null, 2], closedAt: { left: null, right: true } },
+      { expr: '3*(x-2)*(x-6)+9', domain: [2, null], closedAt: { left: false, right: null } },
+    ]
+    await withFakeCanvasContext((arcCalls) => {
+      render(<Panel pieces={pieces} onPiecesChange={vi.fn()} params={{}} />)
+      expect(arcCalls).toHaveLength(2)
+      expect(arcCalls[0].x).toBeCloseTo(250)
+      expect(arcCalls[0].y).toBeCloseTo(75)
+      expect(arcCalls[0].closed).toBe(true)
+      expect(arcCalls[1].x).toBeCloseTo(250)
+      expect(arcCalls[1].y).toBeCloseTo(-25)
+      expect(arcCalls[1].closed).toBe(false)
+    })
+  })
+
+  it('marks a freshly-bounded edge as closed by default once a domain bound is typed in, even though its checkbox has not been touched', async () => {
+    // Regression test: a brand-new piece has closedAt: { left: null, right: null }
+    // (EMPTY_PIECE_SHAPE) because there's no boundary to describe yet. Once
+    // the user types a finite domain min, that side gains a real boundary
+    // point, but closedAt.left is untouched -- still null. The checkbox
+    // already renders this as checked (its `checked` computation treats
+    // null as closed), so the marker must follow the same convention rather
+    // than requiring closedAt to be explicitly set before drawing anything.
+    const initial = [{ expr: 'x', domain: [null, null], closedAt: { left: null, right: null } }]
+    await withFakeCanvasContext(async (arcCalls) => {
+      render(<StatefulPanel initialPieces={initial} onChangeSpy={vi.fn()} />)
+      expect(arcCalls).toHaveLength(0) // fully unbounded piece: no boundary to mark yet
+
+      // world (3,3) -> screen ((3+8)/16*400, 400-(3+8)/16*400) = (275, 125)
+      await userEvent.type(screen.getByLabelText(/^domain min \d+$/i), '3')
+      expect(arcCalls.at(-1)).toMatchObject({ closed: true })
+      expect(arcCalls.at(-1).x).toBeCloseTo(275)
+      expect(arcCalls.at(-1).y).toBeCloseTo(125)
+    })
+  })
 })

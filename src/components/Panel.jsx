@@ -34,7 +34,8 @@ export function Panel({ pieces, onPiecesChange, params }) {
   // GraphCanvas/drawCurve never samples a neighboring piece's x-range) and
   // via the `fn.contains` guard (so the exact sample landing on an *open*
   // boundary reports NaN instead of the piece's value, leaving that single
-  // point undrawn -- the open/closed *marker* itself is Task 12's job).
+  // point undrawn -- the open/closed *marker* itself is drawn separately,
+  // via `points` below).
   const curves = fn
     ? fn.pieces.map((p) => ({
         fn: (x) => (fn.contains(p, x) ? p.evaluate(x) : NaN),
@@ -43,6 +44,31 @@ export function Panel({ pieces, onPiecesChange, params }) {
           xMax: p.domain[1] ?? FALLBACK_MAX,
         },
       }))
+    : []
+
+  // One marker per finite domain boundary (both edges for a piece bounded on
+  // both sides; skipped where the bound is null/undefined -- unbounded means
+  // there's no boundary point to mark). Whether the resulting dot is drawn
+  // filled (closed) or hollow (open) follows the same `!== false` convention
+  // as piecewiseFunction.js's contains() and this file's own checkbox
+  // `checked` computation below: an unset (null/undefined) closedAt side
+  // means closed by default, matching EMPTY_PIECE_SHAPE's freshly-bounded
+  // piece which hasn't had its checkbox touched yet. Gating marker presence
+  // on closedAt (instead of on the domain bound) would silently drop the
+  // marker for exactly that case, even though the checkbox already displays
+  // it as checked.
+  const points = fn
+    ? fn.pieces.flatMap((p) => {
+        const marks = []
+        const [lo, hi] = p.domain
+        if (lo !== null && lo !== undefined) {
+          marks.push({ x: lo, y: p.evaluate(lo), closed: p.closedAt.left !== false })
+        }
+        if (hi !== null && hi !== undefined) {
+          marks.push({ x: hi, y: p.evaluate(hi), closed: p.closedAt.right !== false })
+        }
+        return marks
+      })
     : []
 
   function updatePiece(index, patch) {
@@ -85,7 +111,7 @@ export function Panel({ pieces, onPiecesChange, params }) {
 
   return (
     <div>
-      <GraphCanvas curves={curves} points={[]} />
+      <GraphCanvas curves={curves} points={points} />
       <button type="button" aria-label="add piece" onClick={addPiece}>
         조각 추가
       </button>
