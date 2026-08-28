@@ -388,3 +388,161 @@ describe('Panel — horizontalLineT/onTChange pass-through to GraphCanvas', () =
     expect(onPiecesChange).not.toHaveBeenCalled()
   })
 })
+
+describe('Panel — ObjectList (Task 16): visibility toggle actually filters the graph', () => {
+  // 52번 문제 pieces, reused from the marker test above: left cubic on
+  // (-inf, 2] closed at 2 (value 5), right parabola on [2, +inf) open at 2
+  // (value 9).
+  const pieces = [
+    { id: 1, expr: '2*x^3-6*x+1', domain: [null, 2], closedAt: { left: null, right: true } },
+    { id: 2, expr: '3*(x-2)*(x-6)+9', domain: [2, null], closedAt: { left: false, right: null } },
+  ]
+  const view = { xMin: -8, xMax: 8, yMin: -8, yMax: 8, width: 400, height: 400 }
+
+  // Captures both the boundary-marker `arc` calls (as the existing marker
+  // tests above do) AND the curve's `moveTo`/`lineTo` line segments
+  // (translated back to world coordinates), so a single render lets us
+  // check that a hidden piece drops out of *both* its curve and its point
+  // -- not just one or the other. drawAxes (see canvasRenderer.js) always
+  // issues exactly 4 moveTo/lineTo calls before any curve is drawn
+  // (moveTo/lineTo for the horizontal axis, then moveTo/lineTo for the
+  // vertical axis), so `linePoints.slice(4)` isolates curve-only samples.
+  function installFakeCanvas() {
+    let arcCalls = []
+    let linePoints = []
+    let pendingArc = null
+    const fakeCtx = {
+      save() {},
+      restore() {},
+      beginPath() {},
+      clearRect() {},
+      strokeStyle: '',
+      lineWidth: 0,
+      fillStyle: '',
+      moveTo(sx, sy) {
+        linePoints.push(screenToWorld(view, sx, sy))
+      },
+      lineTo(sx, sy) {
+        linePoints.push(screenToWorld(view, sx, sy))
+      },
+      arc(x, y) {
+        pendingArc = { x, y }
+        arcCalls.push(pendingArc)
+      },
+      fill() {
+        if (pendingArc) pendingArc.closed = true
+        pendingArc = null
+      },
+      stroke() {
+        if (pendingArc) pendingArc.closed = false
+        pendingArc = null
+      },
+    }
+    const original = HTMLCanvasElement.prototype.getContext
+    HTMLCanvasElement.prototype.getContext = () => fakeCtx
+    return {
+      restore: () => {
+        HTMLCanvasElement.prototype.getContext = original
+      },
+      reset: () => {
+        arcCalls = []
+        linePoints = []
+      },
+      arcCalls: () => arcCalls,
+      curvePoints: () => linePoints.slice(4),
+    }
+  }
+
+  it('hiding the left piece removes its curve samples and boundary marker, leaving only the right parabola; toggling back restores both', async () => {
+    const fake = installFakeCanvas()
+    try {
+      render(<Panel pieces={pieces} onPiecesChange={vi.fn()} params={{}} />)
+
+      // Sanity: both pieces render initially.
+      expect(fake.arcCalls()).toHaveLength(2)
+      expect(fake.curvePoints().some((p) => p.x < 1.9)).toBe(true)
+      expect(fake.curvePoints().some((p) => p.x > 2.1)).toBe(true)
+
+      fake.reset()
+      await userEvent.click(screen.getByLabelText('toggle visibility 1'))
+
+      // Only the right piece's open marker at (2, 9) remains.
+      expect(fake.arcCalls()).toHaveLength(1)
+      expect(fake.arcCalls()[0].closed).toBe(false)
+      expect(fake.arcCalls()[0].x).toBeCloseTo(250)
+      expect(fake.arcCalls()[0].y).toBeCloseTo(-25)
+      // No curve sample left of x=2 -- the left cubic is gone entirely, not
+      // just clipped differently.
+      expect(fake.curvePoints().length).toBeGreaterThan(0)
+      expect(fake.curvePoints().every((p) => p.x >= 1.9)).toBe(true)
+
+      fake.reset()
+      await userEvent.click(screen.getByLabelText('toggle visibility 1'))
+
+      expect(fake.arcCalls()).toHaveLength(2)
+      expect(fake.curvePoints().some((p) => p.x < 1.9)).toBe(true)
+    } finally {
+      fake.restore()
+    }
+  })
+
+  it('hiding the right piece removes its curve samples and boundary marker, leaving only the left cubic', async () => {
+    const fake = installFakeCanvas()
+    try {
+      render(<Panel pieces={pieces} onPiecesChange={vi.fn()} params={{}} />)
+      fake.reset()
+
+      await userEvent.click(screen.getByLabelText('toggle visibility 2'))
+
+      // Only the left piece's closed marker at (2, 5) remains.
+      expect(fake.arcCalls()).toHaveLength(1)
+      expect(fake.arcCalls()[0].closed).toBe(true)
+      expect(fake.arcCalls()[0].x).toBeCloseTo(250)
+      expect(fake.arcCalls()[0].y).toBeCloseTo(75)
+      expect(fake.curvePoints().length).toBeGreaterThan(0)
+      expect(fake.curvePoints().every((p) => p.x <= 2.1)).toBe(true)
+    } finally {
+      fake.restore()
+    }
+  })
+
+  it('ObjectList renders one row per piece with a code element showing its expr', () => {
+    render(<Panel pieces={pieces} onPiecesChange={vi.fn()} params={{}} />)
+    const items = screen.getAllByRole('listitem')
+    expect(items).toHaveLength(2)
+    expect(items[0]).toHaveTextContent('2*x^3-6*x+1')
+    expect(items[1]).toHaveTextContent('3*(x-2)*(x-6)+9')
+  })
+
+  it('keeps per-piece visibility keyed by piece id (not array position) across a delete', async () => {
+    // Regression test for the plan's reference `visibility[i]` (array-indexed)
+    // design: hide the *middle* piece, then delete the *first* piece. That
+    // shifts every later piece's row index down by one -- if visibility were
+    // stored by index, the hidden flag left behind at index 1 would now
+    // describe whatever piece shifted into that slot (piece 3), not the
+    // piece the user actually hid (piece 2), which would wrongly reappear.
+    // Keyed by id, piece 2 must still read as hidden regardless of which row
+    // it now occupies, and piece 3 (never touched) must still be visible.
+    const onChangeSpy = vi.fn()
+    const initial = [
+      { id: 1, expr: 'x', domain: [null, null], closedAt: {} },
+      { id: 2, expr: 'x^2', domain: [null, null], closedAt: {} },
+      { id: 3, expr: 'x^3', domain: [null, null], closedAt: {} },
+    ]
+    render(<StatefulPanel initialPieces={initial} onChangeSpy={onChangeSpy} />)
+
+    await userEvent.click(screen.getByLabelText('toggle visibility 2')) // hides piece id=2
+    expect(screen.getByLabelText('toggle visibility 2').textContent).toBe('👁️‍🗨️')
+
+    const deleteButtons = screen.getAllByRole('button', { name: /삭제|remove/i })
+    await userEvent.click(deleteButtons[0]) // deletes piece id=1
+
+    // Row 1 is now piece id=2 (still hidden); row 2 is now piece id=3 (still visible).
+    const items = screen.getAllByRole('listitem')
+    expect(items).toHaveLength(2)
+    expect(items[0]).toHaveTextContent('x^2')
+    expect(items[1]).toHaveTextContent('x^3')
+    expect(screen.getByLabelText('toggle visibility 1').textContent).toBe('👁️‍🗨️')
+    expect(screen.getByLabelText('toggle visibility 2').textContent).toBe('👁️')
+  })
+})

@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { GraphCanvas } from './GraphCanvas'
 import { EquationInput } from './EquationInput'
 import { ParamSliders } from './ParamSliders'
+import { ObjectList } from './ObjectList'
 import { usePiecewiseFunction } from '../hooks/usePiecewiseFunction'
 
 // A brand-new piece starts fully unbounded (domain: [null, null]) -- there is
@@ -21,6 +23,12 @@ const EMPTY_PIECE_SHAPE = { expr: 'x', domain: [null, null], closedAt: { left: n
 const FALLBACK_MIN = -8
 const FALLBACK_MAX = 8
 
+// ObjectList (Task 16) swatch colors. Cycled by index inside ObjectList
+// itself (colors[i % colors.length]), so an arbitrary number of pieces is
+// fine -- this is just the fixed palette to cycle through, not a
+// per-piece assignment that needs to be kept in sync with anything.
+const OBJECT_LIST_COLORS = ['#2563eb', '#dc2626', '#16a34a', '#d97706', '#9333ea', '#0891b2']
+
 export function Panel({
   pieces,
   onPiecesChange,
@@ -40,20 +48,49 @@ export function Panel({
   // itself displays, before the user ever drags anything.
   const { fn, error, freeVars } = usePiecewiseFunction(pieces, params)
 
-  // One curve per piece, each clipped to its own domain via `range` (so
-  // GraphCanvas/drawCurve never samples a neighboring piece's x-range) and
-  // via the `fn.contains` guard (so the exact sample landing on an *open*
-  // boundary reports NaN instead of the piece's value, leaving that single
-  // point undrawn -- the open/closed *marker* itself is drawn separately,
-  // via `points` below).
+  // ObjectList (Task 16) visibility, keyed by piece **id** rather than array
+  // index/position. A Set of *hidden* ids (not "shown" ids) so a freshly
+  // added piece -- which has no entry in this set at all -- defaults to
+  // visible without Panel having to seed an entry for it on every addPiece.
+  //
+  // Keying by id (not index) matters once pieces can be deleted: fn.pieces
+  // (built below) is index-aligned 1:1 with the `pieces` prop -- validatePiecewise
+  // and buildPiecewiseFunction both map def.pieces straight through in input
+  // order, without reordering or dropping entries -- but that alignment shifts
+  // on every delete. An index-keyed visibility store (`hidden[i]`) would then
+  // silently start describing a *different* piece than the one the user
+  // actually toggled. Local useState (not the Zustand store) per the task's
+  // own note ("Panel에 visibility state를 추가") -- this is view-local display
+  // state, not part of the piecewise function's data model.
+  const [hiddenIds, setHiddenIds] = useState(() => new Set())
+  const isVisible = (id) => !hiddenIds.has(id)
+  function toggleVisibility(id) {
+    setHiddenIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  // One curve per *visible* piece, each clipped to its own domain via
+  // `range` (so GraphCanvas/drawCurve never samples a neighboring piece's
+  // x-range) and via the `fn.contains` guard (so the exact sample landing on
+  // an *open* boundary reports NaN instead of the piece's value, leaving
+  // that single point undrawn -- the open/closed *marker* itself is drawn
+  // separately, via `points` below). `fn.pieces[i]` corresponds to
+  // `pieces[i]` (same order, same length -- see note above), so `pieces[i].id`
+  // is what ObjectList's toggle actually flips.
   const curves = fn
-    ? fn.pieces.map((p) => ({
-        fn: (x) => (fn.contains(p, x) ? p.evaluate(x) : NaN),
-        range: {
-          xMin: p.domain[0] ?? FALLBACK_MIN,
-          xMax: p.domain[1] ?? FALLBACK_MAX,
-        },
-      }))
+    ? fn.pieces
+        .filter((_, i) => isVisible(pieces[i]?.id))
+        .map((p) => ({
+          fn: (x) => (fn.contains(p, x) ? p.evaluate(x) : NaN),
+          range: {
+            xMin: p.domain[0] ?? FALLBACK_MIN,
+            xMax: p.domain[1] ?? FALLBACK_MAX,
+          },
+        }))
     : []
 
   // One marker per finite domain boundary (both edges for a piece bounded on
@@ -68,7 +105,8 @@ export function Panel({
   // marker for exactly that case, even though the checkbox already displays
   // it as checked.
   const points = fn
-    ? fn.pieces.flatMap((p) => {
+    ? fn.pieces.flatMap((p, i) => {
+        if (!isVisible(pieces[i]?.id)) return []
         const marks = []
         const [lo, hi] = p.domain
         if (lo !== null && lo !== undefined) {
@@ -129,6 +167,12 @@ export function Panel({
   return (
     <div>
       <GraphCanvas curves={curves} points={points} horizontalLine={horizontalLine} />
+      <ObjectList
+        pieces={pieces}
+        isVisible={isVisible}
+        onToggle={toggleVisibility}
+        colors={OBJECT_LIST_COLORS}
+      />
       <button type="button" aria-label="add piece" onClick={addPiece}>
         조각 추가
       </button>
