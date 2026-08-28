@@ -68,3 +68,54 @@ describe('solutionCount — 52번 문제 회귀 테스트', () => {
     expect(below + at + above).toBe(9)
   })
 })
+
+describe('findRoots / solutionCount — degenerate pieces', () => {
+  it('collapses a constant piece exactly equal to t to a bounded representative instead of one phantom root per sample', () => {
+    const f = buildPiecewiseFunction(
+      { type: 'piecewise', pieces: [{ expr: '3', domain: [-10, 10], closedAt: { left: true, right: true } }] },
+      {}
+    )
+    const roots = findRoots(f, 3, [-10, 10])
+    // Mathematically there are infinitely many solutions (the whole
+    // interval); rootFinder collapses this documented degenerate case to
+    // the interval's two endpoints rather than ~1000 near-duplicate
+    // sample-spaced "roots".
+    expect(roots).toEqual([-10, 10])
+    expect(solutionCount(f, 3, [-10, 10])).toBe(2)
+  })
+
+  it('does not report roots for a constant piece that does not equal t', () => {
+    const f = buildPiecewiseFunction(
+      { type: 'piecewise', pieces: [{ expr: '3', domain: [-10, 10], closedAt: { left: true, right: true } }] },
+      {}
+    )
+    expect(solutionCount(f, 5, [-10, 10])).toBe(0)
+  })
+
+  it('does not report a phantom root at a pole/singularity inside the domain', () => {
+    const f = buildPiecewiseFunction(
+      { type: 'piecewise', pieces: [{ expr: '1/(x-1)', domain: [-5, 5], closedAt: { left: true, right: true } }] },
+      {}
+    )
+    // 1/(x-1) = 0 has no real solution; the sign flip from +Infinity to
+    // -Infinity across the asymptote at x=1 must not be mistaken for a
+    // genuine root.
+    expect(findRoots(f, 0, [-5, 5])).toEqual([])
+    expect(solutionCount(f, 0, [-5, 5])).toBe(0)
+  })
+
+  it('still finds genuine roots on either side of a pole', () => {
+    // 1/(x-1) = 1  =>  x = 2 ;  1/(x-1) = -1  =>  x = 0
+    const f = buildPiecewiseFunction(
+      { type: 'piecewise', pieces: [{ expr: '1/(x-1)', domain: [-5, 5], closedAt: { left: true, right: true } }] },
+      {}
+    )
+    const rootsPos = findRoots(f, 1, [-5, 5])
+    expect(rootsPos).toHaveLength(1)
+    expect(rootsPos[0]).toBeCloseTo(2, 3)
+
+    const rootsNeg = findRoots(f, -1, [-5, 5])
+    expect(rootsNeg).toHaveLength(1)
+    expect(rootsNeg[0]).toBeCloseTo(0, 3)
+  })
+})

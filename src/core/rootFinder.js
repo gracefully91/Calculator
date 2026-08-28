@@ -4,6 +4,19 @@
 // floating-point noise, not sampling coarseness.
 const TANGENT_EPS = 1e-6
 
+// Tolerance for accepting a bisection result as a genuine root: after
+// converging on a sign change, the function's value there must actually be
+// close to t. This rejects sign flips caused by a pole/asymptote inside the
+// domain (e.g. 1/(x-1) crossing from +Infinity to -Infinity), where a plain
+// sign check would otherwise converge bisection onto the singularity itself
+// and report a phantom root.
+const ROOT_ACCEPT_EPS = 1e-6
+
+// Tolerance for treating a piece's sampled values as numerically constant
+// (max - min across every sample). Used only to detect the degenerate
+// "whole piece equals t" case below.
+const CONSTANT_PIECE_EPS = 1e-9
+
 function bisect(fn, a, b, iterations = 50) {
   let lo = a
   let hi = b
@@ -97,15 +110,47 @@ export function findRoots(piecewiseFn, t, searchRange, samples = 1000) {
       if (piecewiseFn.contains(piece, x)) roots.push(x)
     }
 
+    // 0) Degenerate case: the piece is (numerically) constant across the
+    // whole sampled range and that constant equals t. Every x in the
+    // interval is then a solution -- mathematically infinitely many, with
+    // no meaningful finite count. Rather than let the sign-change loop
+    // below emit one phantom "root" per sample point (v0 === 0 on every
+    // sample), we collapse this to a small, documented, bounded
+    // representative: the two ends of the sampled interval. Callers that
+    // care about the "whole segment coincides with the line" case can
+    // detect it separately; solutionCount() will report a sane 2 (or 1 if
+    // the interval degenerates to a point) instead of ~samples.
+    let yMin = ys[0]
+    let yMax = ys[0]
+    for (let i = 1; i <= samples; i++) {
+      if (ys[i] < yMin) yMin = ys[i]
+      if (ys[i] > yMax) yMax = ys[i]
+    }
+    if (yMax - yMin <= CONSTANT_PIECE_EPS && Math.abs(ys[0] - t) <= TANGENT_EPS) {
+      addIfContained(xs[0])
+      addIfContained(xs[samples])
+      return
+    }
+
     // 1) Sign-change crossings.
     for (let i = 0; i < samples; i++) {
       const v0 = ys[i] - t
       const v1 = ys[i + 1] - t
       if (v0 === 0) {
         addIfContained(xs[i])
-      } else if (v0 * v1 < 0) {
-        const root = bisect((x) => piece.evaluate(x) - t, xs[i], xs[i + 1])
-        addIfContained(root)
+      } else if (Number.isFinite(v0) && Number.isFinite(v1) && v0 * v1 < 0) {
+        // A sign flip can also be caused by a pole/asymptote inside the
+        // domain (value runs off to +-Infinity rather than actually
+        // crossing zero). Guard against that both before bisecting (skip
+        // non-finite brackets above) and after (verify the converged point
+        // truly lands close to t, since bisection only tracks sign and
+        // would otherwise happily converge onto the singularity itself).
+        const g = (x) => piece.evaluate(x) - t
+        const root = bisect(g, xs[i], xs[i + 1])
+        const gRoot = g(root)
+        if (Number.isFinite(gRoot) && Math.abs(gRoot) <= ROOT_ACCEPT_EPS) {
+          addIfContained(root)
+        }
       }
     }
     if (ys[samples] - t === 0) addIfContained(xs[samples])
@@ -134,6 +179,6 @@ export function findRoots(piecewiseFn, t, searchRange, samples = 1000) {
   return dedupeSorted(roots)
 }
 
-export function solutionCount(piecewiseFn, t, searchRange, samples) {
+export function solutionCount(piecewiseFn, t, searchRange, samples = 1000) {
   return findRoots(piecewiseFn, t, searchRange, samples).length
 }
