@@ -1,6 +1,8 @@
+import { useMemo } from 'react'
 import CodeMirror from '@uiw/react-codemirror'
 import { javascript } from '@codemirror/lang-javascript'
 import { autocompletion } from '@codemirror/autocomplete'
+import { EditorView } from '@codemirror/view'
 
 const FUNCTION_NAMES = ['abs', 'min', 'max', 'sqrt']
 
@@ -25,14 +27,29 @@ function completions(context) {
 const editorExtensions = [javascript(), autocompletion({ override: [completions] })]
 const basicSetupOptions = { lineNumbers: false, foldGutter: false }
 
-export function EquationInput({ value, onChange, error }) {
+export function EquationInput({ value, onChange, error, label }) {
+  // Panel (Task 11) renders one EquationInput per piece and needs
+  // getByLabelText to tell them apart, but CodeMirror's contentEditable
+  // div has no prop for aria-label. EditorView.contentAttributes lets us
+  // set the attribute directly on that div (which already carries
+  // role="textbox" from CodeMirror's own a11y setup). Only append this
+  // extra facet when a label is given, and memoize on `label` alone so a
+  // per-keystroke re-render (value changes, label doesn't) reuses the same
+  // extensions array identity -- same reasoning as the module-scope hoist
+  // below, just scoped to the one field that legitimately varies per
+  // instance.
+  const extensions = useMemo(
+    () => (label ? [...editorExtensions, EditorView.contentAttributes.of({ 'aria-label': label })] : editorExtensions),
+    [label]
+  )
+
   return (
     <div>
       <CodeMirror
         value={value}
         height="2.5em"
         basicSetup={basicSetupOptions}
-        extensions={editorExtensions}
+        extensions={extensions}
         onChange={onChange}
       />
       {error && <div style={{ color: '#dc2626', fontSize: '0.85em' }}>{error}</div>}
