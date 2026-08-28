@@ -45,6 +45,18 @@ describe('drawCurve', () => {
     expect(() => drawCurve(ctx, view, f, { xMin: -5, xMax: 5 }, 20)).not.toThrow()
   })
 
+  it('skips segments where fn throws without throwing itself', () => {
+    const ctx = createMockCtx()
+    const f = (x) => {
+      if (x < 0) throw new Error('Undefined symbol a')
+      return x
+    }
+    expect(() => drawCurve(ctx, view, f, { xMin: -5, xMax: 5 }, 20)).not.toThrow()
+    expect(ctx.moveTo).toHaveBeenCalled()
+    expect(ctx.lineTo).toHaveBeenCalled()
+    expect(ctx.stroke).toHaveBeenCalled()
+  })
+
   it('does not throw when range is degenerate (xMax <= xMin)', () => {
     const ctx = createMockCtx()
     expect(() => drawCurve(ctx, view, (x) => x, { xMin: 5, xMax: 5 }, 20)).not.toThrow()

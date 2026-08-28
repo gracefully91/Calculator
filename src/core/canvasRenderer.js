@@ -28,7 +28,13 @@ export function drawCurve(ctx, view, fn, range, samples = 300) {
   let penDown = false
   for (let i = 0; i <= samples; i++) {
     const x = range.xMin + step * i
-    const y = fn(x)
+    let y
+    try {
+      y = fn(x)
+    } catch {
+      penDown = false
+      continue
+    }
     if (Number.isNaN(y) || !Number.isFinite(y)) {
       penDown = false
       continue
