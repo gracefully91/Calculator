@@ -37,6 +37,36 @@ export function GraphCanvas({ curves, points, width = 400, height = 400, onCanva
 
   const view = { ...worldView, width, height }
 
+  // Task 17 (responsive layout) lets CSS stretch the canvas's *rendered*
+  // size (style width:100%/height:auto below) away from its *resolution*
+  // (the width/height attributes, which stay fixed -- worldToScreen/
+  // screenToWorld and the draw effect below all operate in that resolution
+  // pixel space). getBoundingClientRect() reports the rendered CSS size,
+  // not the resolution, so any handler that turns a MouseEvent's
+  // clientX/clientY into a resolution-space pixel value must first divide
+  // out that ratio -- otherwise a rendered canvas larger than its
+  // resolution (e.g. a wide flex column) makes drags/hit-tests act as if
+  // the cursor moved less than it visually did, throwing off both the
+  // horizontalLine hit test/drag and panning by the scale factor. This is
+  // exactly the risk flagged in Task 14's code review as "latent" pending
+  // "a future layout [that] applies CSS sizing" -- this is that layout.
+  //
+  // jsdom's getBoundingClientRect() always reports width/height 0 (it does
+  // no real layout), which would otherwise turn this into a divide-by-zero
+  // for every existing unit test -- falling back to the resolution
+  // width/height whenever the rendered size reads as 0 keeps those tests'
+  // pixel math (written assuming rendered size === resolution) unchanged,
+  // while still applying the real ratio in a browser where the rect is
+  // non-zero.
+  function renderedSize() {
+    const rect = canvasRef.current.getBoundingClientRect()
+    return {
+      rect,
+      renderedWidth: rect.width || width,
+      renderedHeight: rect.height || height,
+    }
+  }
+
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -80,8 +110,11 @@ export function GraphCanvas({ curves, points, width = 400, height = 400, onCanva
 
   function handleMouseDown(e) {
     if (horizontalLine) {
-      const rect = canvasRef.current.getBoundingClientRect()
-      const my = e.clientY - rect.top
+      const { rect, renderedHeight } = renderedSize()
+      // e.clientY - rect.top is a rendered-CSS-pixel offset; scale it into
+      // the resolution pixel space that lineScreenY (from worldToScreen,
+      // which uses view.height = the resolution height) is expressed in.
+      const my = (e.clientY - rect.top) * (height / renderedHeight)
       const { y: lineScreenY } = worldToScreen(view, view.xMin, horizontalLine.y)
       if (Math.abs(my - lineScreenY) <= LINE_HIT_THRESHOLD_PX) {
         dragStartRef.current = { mode: 'line' }
@@ -96,15 +129,21 @@ export function GraphCanvas({ curves, points, width = 400, height = 400, onCanva
     if (!dragStart) return
 
     if (dragStart.mode === 'line') {
-      const rect = canvasRef.current.getBoundingClientRect()
-      const my = e.clientY - rect.top
+      const { rect, renderedHeight } = renderedSize()
+      const my = (e.clientY - rect.top) * (height / renderedHeight)
       const { y: newY } = screenToWorld(view, 0, my)
       horizontalLine?.onDrag?.(newY)
       return
     }
 
-    const dx = ((e.clientX - dragStart.x) / width) * (dragStart.view.xMax - dragStart.view.xMin)
-    const dy = ((e.clientY - dragStart.y) / height) * (dragStart.view.yMax - dragStart.view.yMin)
+    // Pan converts a raw clientX/clientY delta (rendered CSS pixels)
+    // directly into a fraction of the world range -- that fraction must be
+    // taken over the *rendered* size (renderedWidth/Height), not the fixed
+    // resolution width/height, or panning would run faster/slower than the
+    // cursor once CSS stretches the canvas away from its resolution.
+    const { renderedWidth, renderedHeight } = renderedSize()
+    const dx = ((e.clientX - dragStart.x) / renderedWidth) * (dragStart.view.xMax - dragStart.view.xMin)
+    const dy = ((e.clientY - dragStart.y) / renderedHeight) * (dragStart.view.yMax - dragStart.view.yMin)
     setWorldView({
       xMin: dragStart.view.xMin - dx,
       xMax: dragStart.view.xMax - dx,
@@ -122,6 +161,13 @@ export function GraphCanvas({ curves, points, width = 400, height = 400, onCanva
       ref={canvasRef}
       width={width}
       height={height}
+      // Task 17: let the canvas's *rendered* size follow its flex container
+      // (width:100%) while keeping its drawing-buffer *resolution* fixed at
+      // the width/height attributes above -- aspect ratio is preserved via
+      // height:auto. See renderedSize() above for why every handler that
+      // touches getBoundingClientRect() has to correct for the resulting
+      // rendered-vs-resolution scale.
+      style={{ width: '100%', height: 'auto' }}
       onWheel={handleWheel}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}

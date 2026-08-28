@@ -1,0 +1,22 @@
+/* Task 17: responsive layout for the top-level Panel / LinkedFunctionPanel
+   row. Below 768px the two columns (each a direct child of .main-row --
+   Panel's own root div, and the div wrapping the Trace-On checkbox +
+   LinkedFunctionPanel) stack vertically instead of sitting side by side. */
+.main-row {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+  .main-row {
+    flex-direction: column;
+  }
+}
+
+.main-row > * {
+  flex: 1 1 400px;
+  min-width: 0;
+}

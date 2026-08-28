@@ -1,3 +1,4 @@
+import './App.css'
 import { useAppStore } from './state/store'
 import { Panel } from './components/Panel'
 import { LinkBar } from './components/LinkBar'
@@ -22,7 +23,7 @@ export default function App() {
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: '1rem', padding: '1rem', flexWrap: 'wrap' }}>
+      <div className="main-row">
         <Panel
           pieces={leftPieces}
           onPiecesChange={setLeftPieces}

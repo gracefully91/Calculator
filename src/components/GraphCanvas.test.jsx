@@ -17,6 +17,15 @@ describe('GraphCanvas', () => {
     expect(canvas).toHaveAttribute('height', '240')
   })
 
+  it('sets style width:100%/height:auto so a flex container (Task 17) can stretch the rendered size while the drawing-buffer resolution stays at the width/height attributes', () => {
+    const { container } = render(<GraphCanvas curves={[]} points={[]} width={320} height={240} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toHaveAttribute('width', '320')
+    expect(canvas).toHaveAttribute('height', '240')
+    expect(canvas.style.width).toBe('100%')
+    expect(canvas.style.height).toBe('auto')
+  })
+
   it('does not crash when given curves and points to draw', () => {
     // jsdom has no real 2d canvas context, so this mainly proves the
     // component tolerates a null context (getContext('2d') returns null
@@ -249,5 +258,105 @@ describe('GraphCanvas — horizontalLine (draggable y=t)', () => {
     // dx = (110-100)/400 * 16 = 0.4
     expect(view.xMin).toBeCloseTo(-8.4)
     expect(view.xMax).toBeCloseTo(7.6)
+  })
+})
+
+// Regression coverage for Task 17 (responsive layout): once CSS can stretch
+// the canvas's *rendered* size away from its fixed drawing-buffer
+// resolution (style width:100%/height:auto), getBoundingClientRect() no
+// longer agrees with the width/height attributes that worldToScreen/
+// screenToWorld compute in. Task 14's code review flagged this exact
+// scenario as a latent risk ("if a future layout applies CSS sizing that
+// differs from the width/height attributes... throwing off both the hit
+// test and the drag position by the scale factor") -- these tests stub
+// getBoundingClientRect to a rendered size that is 2x the canvas's 400x400
+// resolution and verify the line hit-test/drag and panning both still
+// compute the correct world-space result despite the mismatch.
+describe('GraphCanvas — CSS-rendered size differs from drawing-buffer resolution (Task 17)', () => {
+  const LINE_Y = 0
+  // Resolution-space screen y for LINE_Y (worldToScreen with the default
+  // 400x400/-8..8 view; see LINE_SCREEN_Y above). At a 2x rendered scale
+  // this line visually sits at rendered y = 200 * 2 = 400.
+  const RESOLUTION_LINE_SCREEN_Y = 200
+  const RENDER_SCALE = 2
+
+  function stubRenderedRect(canvas, scale) {
+    // jsdom's own getBoundingClientRect always reports 0; override it on
+    // this element only, as if CSS had stretched it to `scale`x its
+    // 400x400 resolution.
+    canvas.getBoundingClientRect = () => ({
+      top: 0,
+      left: 0,
+      width: 400 * scale,
+      height: 400 * scale,
+      bottom: 400 * scale,
+      right: 400 * scale,
+      x: 0,
+      y: 0,
+      toJSON() {
+        return {}
+      },
+    })
+  }
+
+  it('still detects a mousedown on the rendered (CSS-scaled) line position as a line-drag, not a pan', () => {
+    const onDrag = vi.fn()
+    const { container } = render(
+      <GraphCanvas curves={[]} points={[]} horizontalLine={{ y: LINE_Y, onDrag }} />
+    )
+    const canvas = container.querySelector('canvas')
+    stubRenderedRect(canvas, RENDER_SCALE)
+
+    // A real cursor lands on the line at its *rendered* position
+    // (200 * 2 = 400), not its resolution position (200).
+    const renderedLineY = RESOLUTION_LINE_SCREEN_Y * RENDER_SCALE
+    fireEvent.mouseDown(canvas, { clientX: 400, clientY: renderedLineY })
+    // Drag down to the rendered bottom of the canvas (800) -> resolution
+    // y = 800 / 2 = 400 -> screenToWorld(view, 0, 400) = -8 (view's yMin).
+    fireEvent.mouseMove(canvas, { clientX: 400, clientY: 800 })
+    fireEvent.mouseUp(canvas, { clientX: 400, clientY: 800 })
+
+    expect(onDrag).toHaveBeenCalled()
+    expect(onDrag.mock.calls.at(-1)[0]).toBeCloseTo(-8)
+  })
+
+  it('scales pan distance by the rendered size, not the fixed resolution, so a drag tracks the cursor 1:1 on screen', () => {
+    const onCanvasClick = vi.fn()
+    const { container } = render(
+      <GraphCanvas curves={[]} points={[]} onCanvasClick={onCanvasClick} />
+    )
+    const canvas = container.querySelector('canvas')
+    stubRenderedRect(canvas, RENDER_SCALE)
+
+    // Well away from any line, plain pan.
+    fireEvent.mouseDown(canvas, { clientX: 100, clientY: 100 })
+    // 80 rendered CSS px to the right, on an 800px-rendered (2x) canvas.
+    fireEvent.mouseMove(canvas, { clientX: 180, clientY: 100 })
+    fireEvent.mouseUp(canvas, { clientX: 180, clientY: 100 })
+
+    fireEvent.click(canvas)
+    const [, view] = onCanvasClick.mock.calls.at(-1)
+    // dx = (80 / renderedWidth 800) * 16 = 1.6 -- NOT (80/400)*16 = 3.2,
+    // which is what the old resolution-only math would have produced.
+    expect(view.xMin).toBeCloseTo(-8 - 1.6)
+    expect(view.xMax).toBeCloseTo(8 - 1.6)
+  })
+
+  it('does not mistake a pan-mode mousedown far from the rendered line position for a line grab', () => {
+    const onDrag = vi.fn()
+    const { container } = render(
+      <GraphCanvas curves={[]} points={[]} horizontalLine={{ y: LINE_Y, onDrag }} />
+    )
+    const canvas = container.querySelector('canvas')
+    stubRenderedRect(canvas, RENDER_SCALE)
+
+    // Resolution-space this would be within the 8px threshold of the line
+    // (200 vs 200+3), but at 2x render scale the same CSS-pixel offset from
+    // the rendered line position (400) is nowhere near it.
+    fireEvent.mouseDown(canvas, { clientX: 400, clientY: RESOLUTION_LINE_SCREEN_Y + 3 })
+    fireEvent.mouseMove(canvas, { clientX: 400, clientY: 100 })
+    fireEvent.mouseUp(canvas, { clientX: 400, clientY: 100 })
+
+    expect(onDrag).not.toHaveBeenCalled()
   })
 })

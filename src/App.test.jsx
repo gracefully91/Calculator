@@ -10,6 +10,26 @@ beforeEach(() => {
   useAppStore.setState(useAppStore.getInitialState())
 })
 
+describe('App — responsive layout (Task 17)', () => {
+  it('applies the main-row class to the container holding the left Panel and right LinkedFunctionPanel column, with exactly those two as its direct children', () => {
+    const { container } = render(<App />)
+    const mainRow = container.querySelector('.main-row')
+    expect(mainRow).toBeInTheDocument()
+
+    // .main-row > * (App.css) must resolve to exactly two flex items: the
+    // left Panel's own root div (containing its canvas) and the right-hand
+    // wrapper div (containing the Trace On checkbox + LinkedFunctionPanel's
+    // canvas) -- not, say, individual descendants deeper inside either
+    // panel, which would make the CSS's `flex: 1 1 400px` target the wrong
+    // elements.
+    expect(mainRow.children).toHaveLength(2)
+    const [leftColumn, rightColumn] = mainRow.children
+    expect(leftColumn.querySelector('canvas')).toBeInTheDocument()
+    expect(rightColumn.querySelector('canvas')).toBeInTheDocument()
+    expect(rightColumn.querySelector('input[type="checkbox"]')).toBeInTheDocument()
+  })
+})
+
 describe('App — full two-panel layout (Task 15)', () => {
   it('renders both the left Panel and the right LinkedFunctionPanel, plus LinkBar, side by side', () => {
     const { container } = render(<App />)
