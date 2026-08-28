@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, fireEvent } from '@testing-library/react'
 import { GraphCanvas } from './GraphCanvas'
+import { toResolutionXY, screenToWorld } from '../core/viewport'
 
 describe('GraphCanvas', () => {
   it('renders a canvas element without crashing', () => {
@@ -358,5 +359,75 @@ describe('GraphCanvas — CSS-rendered size differs from drawing-buffer resoluti
     fireEvent.mouseUp(canvas, { clientX: 400, clientY: 100 })
 
     expect(onDrag).not.toHaveBeenCalled()
+  })
+})
+
+// toResolutionXY is exported specifically so an onCanvasClick consumer --
+// which only receives the raw MouseEvent and view, not GraphCanvas's own
+// canvasRef -- can convert a click into resolution-space coordinates
+// without reintroducing the rendered-vs-resolution bug fixed above for the
+// horizontalLine/pan paths. These tests exercise it directly, standing in
+// for the click-based consumer GraphCanvas doesn't have yet.
+describe('toResolutionXY', () => {
+  const VIEW = { xMin: -8, xMax: 8, yMin: -8, yMax: 8, width: 400, height: 400 }
+
+  function fakeMouseEvent(clientX, clientY, rect) {
+    return {
+      clientX,
+      clientY,
+      currentTarget: {
+        getBoundingClientRect: () => ({
+          top: 0,
+          left: 0,
+          bottom: rect.height,
+          right: rect.width,
+          x: 0,
+          y: 0,
+          toJSON() {
+            return {}
+          },
+          ...rect,
+        }),
+      },
+    }
+  }
+
+  it('returns the raw client offset unchanged when the rendered rect matches the resolution 1:1', () => {
+    const e = fakeMouseEvent(120, 90, { width: 400, height: 400 })
+    expect(toResolutionXY(e, VIEW)).toEqual({ x: 120, y: 90 })
+  })
+
+  it('falls back to the resolution size (no scaling) when the rect reads 0 -- e.g. jsdom, which has no real layout engine', () => {
+    const e = fakeMouseEvent(120, 90, { width: 0, height: 0 })
+    expect(toResolutionXY(e, VIEW)).toEqual({ x: 120, y: 90 })
+  })
+
+  it('scales the client offset into resolution space when CSS renders the canvas larger than its resolution', () => {
+    // Canvas resolution is 400x400 (VIEW.width/height) but rendered at
+    // 800x800 (2x) -- a click at the rendered midpoint (400, 400) must map
+    // to the resolution midpoint (200, 200), not (400, 400).
+    const e = fakeMouseEvent(400, 400, { width: 800, height: 800 })
+    const { x, y } = toResolutionXY(e, VIEW)
+    expect(x).toBeCloseTo(200)
+    expect(y).toBeCloseTo(200)
+  })
+
+  it('accounts for the rect origin (offset within the page) as well as the scale', () => {
+    // Rendered at 2x, but also offset 50px from the page's left/top edge.
+    const e = fakeMouseEvent(450, 450, { width: 800, height: 800, left: 50, top: 50 })
+    const { x, y } = toResolutionXY(e, VIEW)
+    // (450 - 50) client-relative px, at 2x scale -> 200 resolution px.
+    expect(x).toBeCloseTo(200)
+    expect(y).toBeCloseTo(200)
+  })
+
+  it('composes with screenToWorld to turn a click on a CSS-scaled canvas into the correct world coordinates', () => {
+    // Rendered at 2x; click at the rendered canvas's center (400,400) ->
+    // resolution center (200,200) -> world (0, 0), the view's own center.
+    const e = fakeMouseEvent(400, 400, { width: 800, height: 800 })
+    const { x, y } = toResolutionXY(e, VIEW)
+    const world = screenToWorld(VIEW, x, y)
+    expect(world.x).toBeCloseTo(0)
+    expect(world.y).toBeCloseTo(0)
   })
 })

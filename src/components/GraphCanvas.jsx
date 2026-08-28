@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from 'react'
 import { drawAxes, drawCurve, drawPointMarker } from '../core/canvasRenderer'
-import { worldToScreen, screenToWorld } from '../core/viewport'
+import { worldToScreen, screenToWorld, resolveRenderedSize } from '../core/viewport'
 
 const DEFAULT_VIEW = { xMin: -8, xMax: 8, yMin: -8, yMax: 8 }
 
@@ -12,7 +12,13 @@ const LINE_HIT_THRESHOLD_PX = 8
 
 // curves: [{ fn: (x)=>y, range: {xMin,xMax} }]
 // points: [{ x, y, closed }]
-// onCanvasClick: (mouseEvent, view) => void — 클릭 좌표를 world 좌표로 바꿀 때 필요한 view를 함께 전달
+// onCanvasClick: (mouseEvent, view) => void — 클릭 좌표를 world 좌표로 바꿀 때 필요한 view를 함께 전달.
+//   mouseEvent.clientX/clientY는 렌더링된 CSS 픽셀 좌표이고, view(worldToScreen/
+//   screenToWorld가 쓰는 좌표계)는 canvas의 해상도(width/height 속성) 픽셀 좌표라서,
+//   Task 17 이후 CSS가 canvas를 늘려 그리는 경우 이 둘이 어긋날 수 있다 (core/viewport.js의
+//   resolveRenderedSize/toResolutionXY 주석 참고). 클릭 좌표를 world 좌표로 바꾸려면 rect
+//   계산을 직접 하지 말고 core/viewport.js가 export하는 toResolutionXY(mouseEvent, view)로
+//   얻은 x/y를 screenToWorld(view, x, y)에 넘길 것.
 // horizontalLine: { y: number, onDrag: (newWorldY) => void } | undefined — 있으면
 //   y=horizontalLine.y 위치에 드래그 가능한 빨간 점선을 그린다. 이 선 근처(8px 이내)에서
 //   mousedown하면 팬 대신 onDrag가 호출된다 (팬과 달리 GraphCanvas의 로컬 worldView는
@@ -50,21 +56,12 @@ export function GraphCanvas({ curves, points, width = 400, height = 400, onCanva
   // horizontalLine hit test/drag and panning by the scale factor. This is
   // exactly the risk flagged in Task 14's code review as "latent" pending
   // "a future layout [that] applies CSS sizing" -- this is that layout.
-  //
-  // jsdom's getBoundingClientRect() always reports width/height 0 (it does
-  // no real layout), which would otherwise turn this into a divide-by-zero
-  // for every existing unit test -- falling back to the resolution
-  // width/height whenever the rendered size reads as 0 keeps those tests'
-  // pixel math (written assuming rendered size === resolution) unchanged,
-  // while still applying the real ratio in a browser where the rect is
-  // non-zero.
+  // See core/viewport.js's resolveRenderedSize() (shared with that module's
+  // toResolutionXY(), which does the same correction for an onCanvasClick
+  // consumer that only has the MouseEvent, not this component's canvasRef).
   function renderedSize() {
     const rect = canvasRef.current.getBoundingClientRect()
-    return {
-      rect,
-      renderedWidth: rect.width || width,
-      renderedHeight: rect.height || height,
-    }
+    return { rect, ...resolveRenderedSize(rect, width, height) }
   }
 
   useEffect(() => {
