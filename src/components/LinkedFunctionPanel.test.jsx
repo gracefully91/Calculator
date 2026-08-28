@@ -108,6 +108,34 @@ describe('LinkedFunctionPanel', () => {
     })
   })
 
+  it('preserves the accumulated trace (does not empty it) through a transient invalid expression, then resumes accumulating once valid again', async () => {
+    // Regression test: Panel's EquationInput fires onChange per keystroke, so
+    // a multi-character edit passes through invalid intermediate states on
+    // every keystroke (e.g. typing "x^2" briefly renders as "x^" or "x^2-").
+    // Naively returning [] whenever the current instant is invalid would
+    // wipe out the whole trace's rendering on every such keystroke, flickering
+    // it away instead of letting it visibly build as the user interacts.
+    const badPieces = [{ expr: 'x +* 2', domain: [null, null], closedAt: { left: null, right: null } }]
+    await withFakeCanvasContext(async (arcCalls) => {
+      const { rerender: rr } = render(<LinkedFunctionPanel pieces={pieces} params={{}} t={-6} traceOn />)
+      expect(arcCalls).toHaveLength(1) // first trace point recorded
+
+      // Expression becomes momentarily invalid (e.g. mid-keystroke) -- the
+      // already-recorded trace point must still be drawn, not dropped.
+      rr(<LinkedFunctionPanel pieces={badPieces} params={{}} t={-6} traceOn />)
+      expect(arcCalls).toHaveLength(1)
+      expect(screen.queryByText(/h\(/)).not.toBeInTheDocument()
+      expect(screen.getByText(/invalid expression/i)).toBeInTheDocument()
+
+      // Expression (and t) become valid again -- the trace resumes building
+      // on top of the point recorded before the invalid interlude, rather
+      // than starting over from empty.
+      rr(<LinkedFunctionPanel pieces={pieces} params={{}} t={-4} traceOn />)
+      expect(arcCalls).toHaveLength(2)
+      expect(screen.getByText(/h\(-4\.00\)/)).toBeInTheDocument()
+    })
+  })
+
   it('clears the accumulated trace when traceOn is switched off', async () => {
     await withFakeCanvasContext(async (arcCalls) => {
       const { rerender: rr } = render(<LinkedFunctionPanel pieces={pieces} params={{}} t={-6} traceOn />)

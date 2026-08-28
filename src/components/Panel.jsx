@@ -1,10 +1,7 @@
-import { useMemo } from 'react'
 import { GraphCanvas } from './GraphCanvas'
 import { EquationInput } from './EquationInput'
 import { ParamSliders } from './ParamSliders'
-import { validatePiecewise } from '../core/functionSchema'
-import { buildPiecewiseFunction } from '../core/piecewiseFunction'
-import { detectFreeVariables } from '../core/freeVariables'
+import { usePiecewiseFunction } from '../hooks/usePiecewiseFunction'
 
 // A brand-new piece starts fully unbounded (domain: [null, null]) -- there is
 // no boundary point yet for "open" vs "closed" to describe, so closedAt is
@@ -24,11 +21,6 @@ const EMPTY_PIECE_SHAPE = { expr: 'x', domain: [null, null], closedAt: { left: n
 const FALLBACK_MIN = -8
 const FALLBACK_MAX = 8
 
-// ParamSliders' own display fallback for a name with no store value yet
-// (values[name] ?? 1) -- mirrored here so evaluation and slider display never
-// disagree about what an untouched parameter is worth.
-const DEFAULT_PARAM_VALUE = 1
-
 export function Panel({
   pieces,
   onPiecesChange,
@@ -37,38 +29,16 @@ export function Panel({
   horizontalLineT,
   onTChange,
 }) {
-  const parsed = useMemo(() => {
-    const validation = validatePiecewise({ type: 'piecewise', pieces })
-    return validation.ok ? { def: validation.normalized } : { error: validation.errors.join('; ') }
-  }, [pieces])
-
-  // Names referenced in the pieces' expressions that are neither `x` nor a
-  // mathjs builtin -- e.g. entering 'a*(x-2)*(x-b)+9' surfaces ['a', 'b'].
-  // Re-parses every expression, so memoize on `pieces` the same way `parsed`
-  // above does, rather than re-running it on every render.
-  const freeVars = useMemo(
-    () => detectFreeVariables(pieces.map((p) => p.expr), ['x']).sort(),
-    [pieces],
-  )
-
-  // A name detected in freeVars but never touched via a slider has no entry
-  // in the store's `params` yet. Without this merge, buildPiecewiseFunction
-  // below would hand mathjs a scope missing that symbol and
-  // compiled.evaluate({x, ...params}) would throw "Undefined symbol a" --
-  // caught silently inside drawCurve's curve loop (so the curve just never
-  // renders), but NOT caught around the boundary-marker `p.evaluate(lo/hi)`
-  // calls further down, which would throw straight out of render. Filling in
-  // the same default the slider displays (1) keeps evaluation defined from
-  // the first render, before the user ever drags anything.
-  const effectiveParams = useMemo(() => {
-    const merged = { ...params }
-    freeVars.forEach((name) => {
-      if (!(name in merged)) merged[name] = DEFAULT_PARAM_VALUE
-    })
-    return merged
-  }, [freeVars, params])
-
-  const fn = parsed.def ? buildPiecewiseFunction(parsed.def, effectiveParams) : null
+  // Shared with LinkedFunctionPanel.jsx (see src/hooks/usePiecewiseFunction.js)
+  // so both panels validate/build/default-param the identical way -- the
+  // whole premise of "linked" is that they're reading the SAME function.
+  // `effectiveParams` isn't caught by drawCurve's own try/catch around a
+  // missing free-variable symbol (that's silently swallowed, so the curve
+  // just never renders) but the boundary-marker `p.evaluate(lo/hi)` calls
+  // further down are NOT similarly guarded and would throw straight out of
+  // render without it -- the hook fills in the same default (1) the slider
+  // itself displays, before the user ever drags anything.
+  const { fn, error, freeVars } = usePiecewiseFunction(pieces, params)
 
   // One curve per piece, each clipped to its own domain via `range` (so
   // GraphCanvas/drawCurve never samples a neighboring piece's x-range) and
@@ -222,7 +192,7 @@ export function Panel({
         )
       })}
       {freeVars.length > 0 && <ParamSliders names={freeVars} values={params} onChange={onParamChange} />}
-      {parsed.error && <div style={{ color: '#dc2626' }}>{parsed.error}</div>}
+      {error && <div style={{ color: '#dc2626' }}>{error}</div>}
     </div>
   )
 }

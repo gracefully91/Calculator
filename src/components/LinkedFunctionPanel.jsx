@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { GraphCanvas } from './GraphCanvas'
-import { validatePiecewise } from '../core/functionSchema'
-import { buildPiecewiseFunction } from '../core/piecewiseFunction'
-import { detectFreeVariables } from '../core/freeVariables'
+import { usePiecewiseFunction } from '../hooks/usePiecewiseFunction'
 import { solutionCount } from '../core/rootFinder'
 
 // GraphCanvas's own DEFAULT_VIEW ([-8,8] on both axes). This is a known
@@ -18,45 +16,20 @@ import { solutionCount } from '../core/rootFinder'
 // after the user pans/zooms.
 const SEARCH_RANGE = [-8, 8]
 
-// Mirrors Panel.jsx's own fallback for a free variable's value before any
-// slider has touched it.
-const DEFAULT_PARAM_VALUE = 1
-
 // buildPiecewiseFunction (Task 4) throws synchronously if a piece's
 // expression fails to compile. Unlike Panel.jsx, this component doesn't
 // author `pieces` itself (it's fed the *same* leftPieces the user is
 // actively editing in the left panel), so a mid-edit invalid expression can
-// reach here at any time. Following Panel.jsx's own pattern (validate first,
-// only build on success, render an error string otherwise) instead of a bare
-// try/catch keeps both panels handling the identical invalid-input case the
-// identical way, rather than one throwing errors and the other bubbling a
-// caught exception through a different code path.
+// reach here at any time. usePiecewiseFunction (shared with Panel.jsx --
+// see src/hooks/usePiecewiseFunction.js) validates first and only builds on
+// success, surfacing an error string instead of throwing, so both panels
+// handle the identical invalid-input case the identical way rather than one
+// throwing and the other bubbling a caught exception through a different
+// code path. It also merges in the same default (1) for any free variable
+// (e.g. 'a', 'b') not yet touched via a slider, so evaluation doesn't throw
+// "Undefined symbol" the first time solutionCount samples it.
 export function LinkedFunctionPanel({ pieces, params, t, traceOn = false }) {
-  const parsed = useMemo(() => {
-    const validation = validatePiecewise({ type: 'piecewise', pieces })
-    return validation.ok ? { def: validation.normalized } : { error: validation.errors.join('; ') }
-  }, [pieces])
-
-  // Same free-variable defaulting Panel.jsx does: a piece referencing a
-  // parameter (e.g. 'a', 'b') that hasn't been touched via a slider yet is
-  // otherwise missing from `params`, and mathjs's compiled.evaluate would
-  // throw "Undefined symbol" the first time solutionCount samples it.
-  const freeVars = useMemo(
-    () => detectFreeVariables(pieces.map((p) => p.expr), ['x']).sort(),
-    [pieces],
-  )
-  const effectiveParams = useMemo(() => {
-    const merged = { ...params }
-    freeVars.forEach((name) => {
-      if (!(name in merged)) merged[name] = DEFAULT_PARAM_VALUE
-    })
-    return merged
-  }, [freeVars, params])
-
-  const fn = useMemo(
-    () => (parsed.def ? buildPiecewiseFunction(parsed.def, effectiveParams) : null),
-    [parsed.def, effectiveParams],
-  )
+  const { fn, error } = usePiecewiseFunction(pieces, params)
   const count = useMemo(() => (fn ? solutionCount(fn, t, SEARCH_RANGE) : null), [fn, t])
 
   // Trace history lives as local component state, not in the store (see
@@ -95,7 +68,13 @@ export function LinkedFunctionPanel({ pieces, params, t, traceOn = false }) {
   // the newest drag position would lag by one render) -- so only append when
   // it isn't already trace's last entry.
   const points = useMemo(() => {
-    if (count === null) return []
+    // A momentarily invalid expression (e.g. mid-keystroke in the left
+    // panel's EquationInput, which fires onChange per keystroke) must not
+    // wipe out an already-accumulated trace -- only skip adding a new point
+    // for this invalid instant. Losing the whole trace here would flicker it
+    // away on every multi-character edit, undercutting the point of a trace
+    // ("watch it build as you interact").
+    if (count === null) return traceOn ? trace : []
     const current = { x: t, y: count, closed: true }
     if (!traceOn) return [current]
     const last = trace[trace.length - 1]
@@ -106,8 +85,8 @@ export function LinkedFunctionPanel({ pieces, params, t, traceOn = false }) {
   return (
     <div>
       <GraphCanvas curves={[]} points={points} />
-      {parsed.error ? (
-        <div style={{ color: '#dc2626' }}>{parsed.error}</div>
+      {error ? (
+        <div style={{ color: '#dc2626' }}>{error}</div>
       ) : (
         <div>
           h({t.toFixed(2)}) = {count}
