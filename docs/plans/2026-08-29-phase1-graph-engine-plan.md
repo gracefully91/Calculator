@@ -1540,6 +1540,8 @@ git commit -m "Auto-generate parameter sliders for undefined variables in expres
 
 ### Task 14: LinkBar + `y=t` 드래그 → 연동함수 패널
 
+> **구현 노트 (Task 5 코드리뷰에서 발견)**: `rootFinder.js`의 극값(tangent) 탐지 패스는 `t`와 무관하게(피스 모양이 안 바뀌면 항상 같은 결과) 매번 처음부터 재계산된다. 이 Task에서 `y=t` 드래그 시 `solutionCount`가 매 프레임 호출될 수 있는데, 실측상 2피스 정도 규모에서는 문제없지만(~1.25ms/call) 피스가 늘어나면 낭비가 누적될 수 있다. 성능 문제가 실제로 체감되면 "피스+searchRange+samples가 안 바뀌는 한 극값 계산 결과를 메모이즈"하는 캐싱을 고려할 것 — 지금 단계에서 미리 최적화하지는 않는다(YAGNI).
+
 **Files:**
 - Create: `src/components/LinkBar.jsx`
 - Modify: `src/components/GraphCanvas.jsx` (드래그 가능한 `y=t` 선 옵션 추가)

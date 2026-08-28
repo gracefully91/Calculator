@@ -1,3 +1,16 @@
+// Counts real solutions of f(x)=t for a piecewise function by sampling each
+// piece on a fixed grid, then refining sign-change crossings (bisection) and
+// tangent touches at local extrema (golden-section search).
+//
+// Known limitation: because detection relies on a fixed sample grid
+// (`samples`, default 1000), a piece that oscillates faster than the grid
+// resolution (e.g. sin(200*x)) can silently UNDERCOUNT roots — crossings
+// that occur and reverse again between two adjacent sample points are never
+// seen. This is an inherent tradeoff of sample-then-refine root finding, not
+// a bug; increasing `samples` narrows the gap at the cost of more evaluations
+// per call. Fine for the polynomial-style pieces this app targets; worth
+// revisiting (e.g. adaptive sampling) if trig-heavy pieces become common.
+
 // Tolerance for treating a local extremum's value as "touching" the target
 // height t (a tangency, e.g. a parabola's vertex resting exactly on the
 // line). Refined via golden-section search, so this only needs to absorb
