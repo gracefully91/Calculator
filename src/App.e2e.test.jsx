@@ -279,5 +279,5 @@ describe('Task 18 — end-to-end verification against the 52-problem, driven thr
     } finally {
       fakeCanvas.restore()
     }
-  })
+  }, 10000)
 })

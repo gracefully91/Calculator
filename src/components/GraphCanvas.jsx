@@ -32,6 +32,7 @@ export function GraphCanvas({ curves, points, width = 400, height = 400, onCanva
   const boardObjectsRef = useRef([])
   const [boardReady, setBoardReady] = useState(false)
   const [worldView, setWorldView] = useState(DEFAULT_VIEW)
+  const [viewBounds, setViewBounds] = useState(DEFAULT_VIEW)
   // Drag state must survive re-renders (setWorldView during a drag causes
   // one), so a plain `let` in the component body would be reset to null on
   // every re-render and break the drag after its first mousemove. A ref's
@@ -88,13 +89,26 @@ export function GraphCanvas({ curves, points, width = 400, height = 400, onCanva
   useEffect(() => {
     const board = boardInstanceRef.current
     if (!board) return
+    board.setBoundingBox([viewBounds.xMin, viewBounds.yMax, viewBounds.xMax, viewBounds.yMin], false)
+    board.fullUpdate()
+  }, [viewBounds, boardReady])
+
+  useEffect(() => {
+    const board = boardInstanceRef.current
+    if (!board) return
 
     boardObjectsRef.current.forEach((object) => board.removeObject(object))
     const objects = []
 
     curves.forEach(({ fn, range }, index) => {
       try {
-        objects.push(board.create('functiongraph', [fn, range.xMin, range.xMax], {
+        // JSXGraph accepts functions for a curve's endpoint. Unbounded
+        // pieces therefore sample exactly the currently visible board width
+        // and continue when the user pans/zooms, instead of stopping at the
+        // legacy fallback range [-8, 8].
+        const minX = range.xMin ?? (() => board.getBoundingBox()[0])
+        const maxX = range.xMax ?? (() => board.getBoundingBox()[2])
+        objects.push(board.create('functiongraph', [fn, minX, maxX], {
           strokeColor: index % 2 === 0 ? '#0f8a7b' : '#2563eb',
           strokeWidth: 3,
           highlight: false,
@@ -175,7 +189,10 @@ export function GraphCanvas({ curves, points, width = 400, height = 400, onCanva
     if (!ctx) return
     ctx.clearRect(0, 0, width, height)
     drawAxes(ctx, view)
-    curves.forEach(({ fn, range }) => drawCurve(ctx, view, fn, range))
+    curves.forEach(({ fn, range }) => drawCurve(ctx, view, fn, {
+      xMin: range.xMin ?? view.xMin,
+      xMax: range.xMax ?? view.xMax,
+    }))
     points.forEach((p) => drawPointMarker(ctx, view, p.x, p.y, { closed: p.closed }))
     if (horizontalLine) {
       const { x: x0, y: sy } = worldToScreen(view, view.xMin, horizontalLine.y)
@@ -256,6 +273,16 @@ export function GraphCanvas({ curves, points, width = 400, height = 400, onCanva
     dragStartRef.current = null
   }
 
+  function updateViewBound(key, rawValue) {
+    const value = Number(rawValue)
+    if (!Number.isFinite(value)) return
+    setViewBounds((current) => {
+      const next = { ...current, [key]: value }
+      if (next.xMin >= next.xMax || next.yMin >= next.yMax) return current
+      return next
+    })
+  }
+
   return (
     <div className={`graph-canvas-host${boardReady ? ' graph-canvas-host--jsxgraph' : ''}`}>
       <div ref={boardElementRef} className="jsxgraph-board" aria-label="interactive graph" />
@@ -279,6 +306,15 @@ export function GraphCanvas({ curves, points, width = 400, height = 400, onCanva
         onClick={(e) => onCanvasClick?.(e, view)}
       />
       <InkLayer strokes={inkStrokes} onStrokesChange={onInkStrokesChange} label={inkLabel} />
+      <details className="view-controls">
+        <summary>보기 범위</summary>
+        <div className="view-controls__fields">
+          <label>x 최소<input type="number" aria-label={`${inkLabel ?? 'graph'} view x min`} value={viewBounds.xMin} onChange={(event) => updateViewBound('xMin', event.target.value)} /></label>
+          <label>x 최대<input type="number" aria-label={`${inkLabel ?? 'graph'} view x max`} value={viewBounds.xMax} onChange={(event) => updateViewBound('xMax', event.target.value)} /></label>
+          <label>y 최소<input type="number" aria-label={`${inkLabel ?? 'graph'} view y min`} value={viewBounds.yMin} onChange={(event) => updateViewBound('yMin', event.target.value)} /></label>
+          <label>y 최대<input type="number" aria-label={`${inkLabel ?? 'graph'} view y max`} value={viewBounds.yMax} onChange={(event) => updateViewBound('yMax', event.target.value)} /></label>
+        </div>
+      </details>
     </div>
   )
 }

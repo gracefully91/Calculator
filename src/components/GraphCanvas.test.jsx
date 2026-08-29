@@ -18,6 +18,16 @@ describe('GraphCanvas', () => {
     expect(canvas).toHaveAttribute('height', '240')
   })
 
+  it('exposes independent x/y display-range controls, including y bounds', () => {
+    const { container, getByLabelText } = render(<GraphCanvas curves={[]} points={[]} inkLabel="source graph" />)
+    const controls = container.querySelector('.view-controls')
+    expect(controls).toBeInTheDocument()
+    expect(getByLabelText('source graph view x min')).toHaveValue(-8)
+    expect(getByLabelText('source graph view x max')).toHaveValue(8)
+    expect(getByLabelText('source graph view y min')).toHaveValue(-8)
+    expect(getByLabelText('source graph view y max')).toHaveValue(8)
+  })
+
   it('sets style width:100%/height:auto so a flex container (Task 17) can stretch the rendered size while the drawing-buffer resolution stays at the width/height attributes', () => {
     const { container } = render(<GraphCanvas curves={[]} points={[]} width={320} height={240} />)
     const canvas = container.querySelector('canvas')

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { LinkedFunctionPanel } from './LinkedFunctionPanel'
+import { RIGHT_GRAPH_MODES } from '../core/rightGraphPresets'
 
 const pieces = [
   { expr: '2*x^3-6*x+1', domain: [null, 2], closedAt: { left: null, right: true } },
@@ -47,6 +48,19 @@ async function withFakeCanvasContext(run) {
 }
 
 describe('LinkedFunctionPanel', () => {
+  it('shows a right-side MathLive expression only in custom-function mode', () => {
+    render(
+      <LinkedFunctionPanel
+        pieces={[{ expr: 'x', domain: [null, null], closedAt: {} }]}
+        params={{}}
+        t={0}
+        mode={RIGHT_GRAPH_MODES.CUSTOM}
+        expression="x^2-4"
+      />,
+    )
+    expect(screen.getByLabelText('right graph expression')).toHaveValue('x^2-4')
+    expect(screen.queryByText(/h\(0\.00\)/)).not.toBeInTheDocument()
+  })
   it('shows the correct solution count for t=-3', () => {
     render(<LinkedFunctionPanel pieces={pieces} params={{}} t={-3} />)
     expect(screen.getByText(/h\(-3(\.00)?\)\s*=\s*3/)).toBeInTheDocument()

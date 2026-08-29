@@ -48,6 +48,8 @@ export const useAppStore = create((set) => ({
   // never appears on the linked h(t) graph.
   leftInkStrokes: [],
   rightInkStrokes: [],
+  rightGraphMode: 'intersection-count',
+  rightGraphExpression: 'x',
 
   setT: (t) => set({ t }),
   setParam: (name, value) => set((s) => ({ params: { ...s.params, [name]: value } })),
@@ -55,5 +57,7 @@ export const useAppStore = create((set) => ({
   setLeftPieces: (pieces) => set({ leftPieces: pieces }),
   setLeftInkStrokes: (strokes) => set({ leftInkStrokes: strokes }),
   setRightInkStrokes: (strokes) => set({ rightInkStrokes: strokes }),
+  setRightGraphMode: (rightGraphMode) => set({ rightGraphMode }),
+  setRightGraphExpression: (rightGraphExpression) => set({ rightGraphExpression }),
   toggleTrace: () => set((s) => ({ traceOn: !s.traceOn })),
 }))

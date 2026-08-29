@@ -18,11 +18,6 @@ import { usePiecewiseFunction } from '../hooks/usePiecewiseFunction'
 // a distinct one.
 const EMPTY_PIECE_SHAPE = { expr: 'x', domain: [null, null], closedAt: { left: null, right: null } }
 
-// GraphCanvas's default viewport (see DEFAULT_VIEW in GraphCanvas.jsx) so an
-// unbounded piece's curve still draws across the initial visible window.
-const FALLBACK_MIN = -8
-const FALLBACK_MAX = 8
-
 // ObjectList (Task 16) swatch colors. Cycled by index inside ObjectList
 // itself (colors[i % colors.length]), so an arbitrary number of pieces is
 // fine -- this is just the fixed palette to cycle through, not a
@@ -89,8 +84,11 @@ export function Panel({
         .map((p) => ({
           fn: (x) => (fn.contains(p, x) ? p.evaluate(x) : NaN),
           range: {
-            xMin: p.domain[0] ?? FALLBACK_MIN,
-            xMax: p.domain[1] ?? FALLBACK_MAX,
+            // null means an unbounded mathematical domain. GraphCanvas turns
+            // that into the board's *current* visible x range, not the old
+            // hard-coded -8..8 sample range that made curves look truncated.
+            xMin: p.domain[0],
+            xMax: p.domain[1],
           },
         }))
     : []

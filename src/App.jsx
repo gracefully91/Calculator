@@ -24,6 +24,15 @@ export default function App() {
   const setLeftInkStrokes = useAppStore((s) => s.setLeftInkStrokes)
   const rightInkStrokes = useAppStore((s) => s.rightInkStrokes)
   const setRightInkStrokes = useAppStore((s) => s.setRightInkStrokes)
+  const rightGraphMode = useAppStore((s) => s.rightGraphMode)
+  const setRightGraphMode = useAppStore((s) => s.setRightGraphMode)
+  const rightGraphExpression = useAppStore((s) => s.rightGraphExpression)
+  const setRightGraphExpression = useAppStore((s) => s.setRightGraphExpression)
+  const rightGraphTitle = rightGraphMode === 'custom'
+    ? 'g(x) 사용자 그래프'
+    : rightGraphMode === 'derivative'
+      ? 'f′(x) 도함수'
+      : 'h(t) 교점 개수'
 
   return (
     <main className="app-shell">
@@ -49,14 +58,14 @@ export default function App() {
           <header className="calculator-card__header">
             <div>
               <p className="calculator-card__eyebrow">연동 결과</p>
-              <h2 id="linked-graph-title">h(t) 교점 개수</h2>
-            </div>
-            <label className="trace-toggle">
+          <h2 id="linked-graph-title">{rightGraphTitle}</h2>
+        </div>
+            {rightGraphMode === 'intersection-count' && <label className="trace-toggle">
               <input type="checkbox" checked={traceOn} onChange={toggleTrace} />
               <span>Trace On</span>
-            </label>
+            </label>}
           </header>
-          <LinkedFunctionPanel pieces={leftPieces} params={params} t={t} traceOn={traceOn} inkStrokes={rightInkStrokes} onInkStrokesChange={setRightInkStrokes} />
+          <LinkedFunctionPanel pieces={leftPieces} params={params} onParamChange={setParam} t={t} traceOn={traceOn} inkStrokes={rightInkStrokes} onInkStrokesChange={setRightInkStrokes} mode={rightGraphMode} onModeChange={setRightGraphMode} expression={rightGraphExpression} onExpressionChange={setRightGraphExpression} />
         </section>
       </div>
       <LinkBar t={t} />

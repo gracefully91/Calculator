@@ -68,4 +68,11 @@ describe('useAppStore', () => {
     expect(useAppStore.getState().leftInkStrokes).toEqual(left)
     expect(useAppStore.getState().rightInkStrokes).toEqual(right)
   })
+
+  it('keeps the right graph preset and optional custom expression in shared state', () => {
+    useAppStore.getState().setRightGraphMode('custom')
+    useAppStore.getState().setRightGraphExpression('x^2-4')
+    expect(useAppStore.getState().rightGraphMode).toBe('custom')
+    expect(useAppStore.getState().rightGraphExpression).toBe('x^2-4')
+  })
 })

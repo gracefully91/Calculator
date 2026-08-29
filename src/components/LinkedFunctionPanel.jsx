@@ -1,98 +1,122 @@
 import { useEffect, useMemo, useState } from 'react'
 import { GraphCanvas } from './GraphCanvas'
+import { EquationInput } from './EquationInput'
+import { ParamSliders } from './ParamSliders'
 import { usePiecewiseFunction } from '../hooks/usePiecewiseFunction'
+import { tryCompileExpression } from '../core/mathEngine'
+import { detectFreeVariables } from '../core/freeVariables'
 import { solutionCount } from '../core/rootFinder'
+import {
+  INTERSECTION_SEARCH_RANGE,
+  numericalDerivative,
+  RIGHT_GRAPH_MODE_LABELS,
+  RIGHT_GRAPH_MODES,
+} from '../core/rightGraphPresets'
 
-// GraphCanvas's own DEFAULT_VIEW ([-8,8] on both axes). This is a known
-// limitation, not a full fix: GraphCanvas (Task 14) supports independent
-// pan/zoom per instance, and this panel has no way to know if the user
-// panned/zoomed the LEFT graph to inspect roots outside [-8, 8] -- h(t) would
-// then quietly disagree with what's visible there (undercounting roots that
-// exist beyond this fixed window). A proper fix means lifting GraphCanvas's
-// worldView out to a shared/prop-driven state and threading it into both
-// panels -- out of scope for this task (Task 15 wasn't asked to add a view
-// prop anywhere, and neither Panel nor App currently expose one). Flagging
-// here rather than fixing; revisit if Phase 2 needs h(t) to stay accurate
-// after the user pans/zooms.
-const SEARCH_RANGE = [-8, 8]
-
-// buildPiecewiseFunction (Task 4) throws synchronously if a piece's
-// expression fails to compile. Unlike Panel.jsx, this component doesn't
-// author `pieces` itself (it's fed the *same* leftPieces the user is
-// actively editing in the left panel), so a mid-edit invalid expression can
-// reach here at any time. usePiecewiseFunction (shared with Panel.jsx --
-// see src/hooks/usePiecewiseFunction.js) validates first and only builds on
-// success, surfacing an error string instead of throwing, so both panels
-// handle the identical invalid-input case the identical way rather than one
-// throwing and the other bubbling a caught exception through a different
-// code path. It also merges in the same default (1) for any free variable
-// (e.g. 'a', 'b') not yet touched via a slider, so evaluation doesn't throw
-// "Undefined symbol" the first time solutionCount samples it.
-export function LinkedFunctionPanel({ pieces, params, t, traceOn = false, inkStrokes, onInkStrokesChange }) {
-  const { fn, error } = usePiecewiseFunction(pieces, params)
-  const count = useMemo(() => (fn ? solutionCount(fn, t, SEARCH_RANGE) : null), [fn, t])
-
-  // Trace history lives as local component state, not in the store (see
-  // store.js's traceOn comment) -- only the on/off flag is shared state.
+export function LinkedFunctionPanel({
+  pieces,
+  params,
+  onParamChange = () => {},
+  t,
+  traceOn = false,
+  inkStrokes,
+  onInkStrokesChange,
+  mode = RIGHT_GRAPH_MODES.INTERSECTION_COUNT,
+  onModeChange = () => {},
+  expression = 'x',
+  onExpressionChange = () => {},
+}) {
+  const { fn, error: sourceError } = usePiecewiseFunction(pieces, params)
+  const isIntersectionCount = mode === RIGHT_GRAPH_MODES.INTERSECTION_COUNT
+  const isDerivative = mode === RIGHT_GRAPH_MODES.DERIVATIVE
+  const isCustom = mode === RIGHT_GRAPH_MODES.CUSTOM
+  const count = useMemo(
+    () => (fn ? solutionCount(fn, t, INTERSECTION_SEARCH_RANGE) : null),
+    [fn, t],
+  )
+  const customResult = useMemo(() => tryCompileExpression(expression), [expression])
+  const customFreeVars = useMemo(() => detectFreeVariables([expression], ['x']).sort(), [expression])
   const [trace, setTrace] = useState([])
 
   useEffect(() => {
-    if (!traceOn || count === null) return
-    // Each drag mousemove reports a (very likely) distinct `t` (GraphCanvas's
-    // line-drag handler calls onDrag on every mousemove with a freshly
-    // computed screenToWorld value), so this effect's deps ([t, count,
-    // traceOn]) genuinely change on every mousemove during a drag and this
-    // runs once per event -- there's no redundant re-firing for an unchanged
-    // t to dedupe here. A single drag gesture across the panel produces at
-    // most a few hundred points (bounded by mousemove event count, not by
-    // time), which canvas 2D draws without any perceptible cost -- not worth
-    // adding point-thinning logic for.
-    setTrace((prev) => [...prev, { x: t, y: count, closed: true }])
-  }, [t, count, traceOn])
+    if (!traceOn || !isIntersectionCount || count === null) return
+    setTrace((previous) => [...previous, { x: t, y: count, closed: true }])
+  }, [t, count, traceOn, isIntersectionCount])
 
-  // Turning trace off (and leaving it off) clears the accumulated history,
-  // so re-enabling it later starts a fresh trace instead of resuming a stale
-  // one from a previous drag.
   useEffect(() => {
-    if (!traceOn) setTrace([])
-  }, [traceOn])
+    if (!traceOn || !isIntersectionCount) setTrace([])
+  }, [traceOn, isIntersectionCount])
 
-  // The render right after the effect above commits a point to `trace`
-  // carries that same (t, count) both as `trace`'s own last entry and, if
-  // naively re-appended here, a second time as "the current point" -- i.e.
-  // every trace point would get drawn twice, on top of itself, one render
-  // after it's recorded (harmless-looking on screen since the dots exactly
-  // overlap, but it's real duplicate state and doubles GraphCanvas's draw
-  // work). Appending "the current point" unconditionally is still needed for
-  // the render that happens *before* the effect has committed it (otherwise
-  // the newest drag position would lag by one render) -- so only append when
-  // it isn't already trace's last entry.
   const points = useMemo(() => {
-    // A momentarily invalid expression (e.g. mid-keystroke in the left
-    // panel's EquationInput, which fires onChange per keystroke) must not
-    // wipe out an already-accumulated trace -- only skip adding a new point
-    // for this invalid instant. Losing the whole trace here would flicker it
-    // away on every multi-character edit, undercutting the point of a trace
-    // ("watch it build as you interact").
-    if (count === null) return traceOn ? trace : []
-    const current = { x: t, y: count, closed: true }
-    if (!traceOn) return [current]
-    const last = trace[trace.length - 1]
-    if (last && last.x === t && last.y === count) return trace
-    return [...trace, current]
-  }, [trace, traceOn, t, count])
+    if (isIntersectionCount) {
+      if (count === null) return traceOn ? trace : []
+      const current = { x: t, y: count, closed: true }
+      if (!traceOn) return [current]
+      const last = trace[trace.length - 1]
+      return last && last.x === t && last.y === count ? trace : [...trace, current]
+    }
+    if (isDerivative && fn) {
+      const y = numericalDerivative(fn, t)
+      return Number.isFinite(y) ? [{ x: t, y, closed: true }] : []
+    }
+    return []
+  }, [isIntersectionCount, isDerivative, count, traceOn, trace, t, fn])
+
+  const curves = useMemo(() => {
+    if (isDerivative && fn) {
+      return [{ fn: (x) => numericalDerivative(fn, x), range: { xMin: null, xMax: null } }]
+    }
+    if (isCustom && customResult.ok) {
+      return [{
+        fn: (x) => {
+          try {
+            const value = customResult.compiled.evaluate({ x, ...params })
+            return Number.isFinite(value) ? value : NaN
+          } catch {
+            return NaN
+          }
+        },
+        range: { xMin: null, xMax: null },
+      }]
+    }
+    return []
+  }, [isDerivative, isCustom, fn, customResult, params])
+
+  const error = isCustom ? (customResult.ok ? null : customResult.error) : sourceError
+  const hint = isIntersectionCount
+    ? 'x축은 t, y축은 y=t와의 교점 개수입니다'
+    : isDerivative
+      ? '왼쪽 원함수의 수치 미분 그래프입니다'
+      : 'g(x)를 직접 입력해 독립된 두 번째 그래프를 만드세요'
 
   return (
     <div className="linked-function-panel">
       <div className="graph-stage">
-        <GraphCanvas curves={[]} points={points} inkStrokes={inkStrokes} onInkStrokesChange={onInkStrokesChange} inkLabel="linked graph" />
-        <p className="graph-stage__hint">왼쪽의 y = t 변화가 이곳에 기록됩니다</p>
+        <GraphCanvas curves={curves} points={points} inkStrokes={inkStrokes} onInkStrokesChange={onInkStrokesChange} inkLabel="linked graph" />
+        <p className="graph-stage__hint">{hint}</p>
       </div>
       <div className="expression-sheet expression-sheet--linked">
         <div className="sheet-handle" aria-hidden="true" />
-        {error ? <div className="expression-error">{error}</div> : <>
-          <div className="linked-equation"><span className="linked-equation__dot" /> h(t) = 교점 개수</div>
-          <div className="linked-reading"><span>현재 연결값</span><strong>h({t.toFixed(2)}) = {count}</strong></div>
+        <label className="right-graph-mode">
+          <span>오른쪽 그래프</span>
+          <select aria-label="right graph mode" value={mode} onChange={(event) => onModeChange(event.target.value)}>
+            {Object.entries(RIGHT_GRAPH_MODE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </select>
+        </label>
+        {isCustom ? <>
+          <div className="linked-equation"><span className="linked-equation__dot" /> g(x)</div>
+          <EquationInput label="right graph expression" value={expression} onChange={onExpressionChange} error={null} />
+          {customFreeVars.length > 0 && <ParamSliders names={customFreeVars} values={params} onChange={onParamChange} />}
+          {error && <div className="expression-error">{error}</div>}
+        </> : error ? <div className="expression-error">{error}</div> : <>
+          {isIntersectionCount && <>
+            <div className="linked-equation"><span className="linked-equation__dot" /> h(t) = 교점 개수</div>
+            <div className="linked-reading"><span>현재 연결값</span><strong>h({t.toFixed(2)}) = {count}</strong></div>
+          </>}
+          {isDerivative && <>
+            <div className="linked-equation"><span className="linked-equation__dot" /> f′(x) = 기울기</div>
+            <div className="linked-reading"><span>현재 연결값</span><strong>f′({t.toFixed(2)}) = {numericalDerivative(fn, t).toFixed(2)}</strong></div>
+          </>}
         </>}
       </div>
     </div>
