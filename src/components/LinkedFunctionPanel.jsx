@@ -28,7 +28,7 @@ const SEARCH_RANGE = [-8, 8]
 // code path. It also merges in the same default (1) for any free variable
 // (e.g. 'a', 'b') not yet touched via a slider, so evaluation doesn't throw
 // "Undefined symbol" the first time solutionCount samples it.
-export function LinkedFunctionPanel({ pieces, params, t, traceOn = false }) {
+export function LinkedFunctionPanel({ pieces, params, t, traceOn = false, inkStrokes, onInkStrokesChange }) {
   const { fn, error } = usePiecewiseFunction(pieces, params)
   const count = useMemo(() => (fn ? solutionCount(fn, t, SEARCH_RANGE) : null), [fn, t])
 
@@ -85,7 +85,7 @@ export function LinkedFunctionPanel({ pieces, params, t, traceOn = false }) {
   return (
     <div className="linked-function-panel">
       <div className="graph-stage">
-        <GraphCanvas curves={[]} points={points} />
+        <GraphCanvas curves={[]} points={points} inkStrokes={inkStrokes} onInkStrokesChange={onInkStrokesChange} inkLabel="linked graph" />
         <p className="graph-stage__hint">왼쪽의 y = t 변화가 이곳에 기록됩니다</p>
       </div>
       <div className="expression-sheet expression-sheet--linked">

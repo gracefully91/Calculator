@@ -20,6 +20,10 @@ export default function App() {
   const setParam = useAppStore((s) => s.setParam)
   const traceOn = useAppStore((s) => s.traceOn)
   const toggleTrace = useAppStore((s) => s.toggleTrace)
+  const leftInkStrokes = useAppStore((s) => s.leftInkStrokes)
+  const setLeftInkStrokes = useAppStore((s) => s.setLeftInkStrokes)
+  const rightInkStrokes = useAppStore((s) => s.rightInkStrokes)
+  const setRightInkStrokes = useAppStore((s) => s.setRightInkStrokes)
 
   return (
     <main className="app-shell">
@@ -38,6 +42,8 @@ export default function App() {
           onParamChange={setParam}
           horizontalLineT={t}
           onTChange={setT}
+          inkStrokes={leftInkStrokes}
+          onInkStrokesChange={setLeftInkStrokes}
         />
         <section className="calculator-card calculator-card--linked" aria-labelledby="linked-graph-title">
           <header className="calculator-card__header">
@@ -50,7 +56,7 @@ export default function App() {
               <span>Trace On</span>
             </label>
           </header>
-          <LinkedFunctionPanel pieces={leftPieces} params={params} t={t} traceOn={traceOn} />
+          <LinkedFunctionPanel pieces={leftPieces} params={params} t={t} traceOn={traceOn} inkStrokes={rightInkStrokes} onInkStrokesChange={setRightInkStrokes} />
         </section>
       </div>
       <LinkBar t={t} />

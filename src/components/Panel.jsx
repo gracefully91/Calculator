@@ -36,6 +36,8 @@ export function Panel({
   onParamChange = () => {},
   horizontalLineT,
   onTChange,
+  inkStrokes,
+  onInkStrokesChange,
 }) {
   // Shared with LinkedFunctionPanel.jsx (see src/hooks/usePiecewiseFunction.js)
   // so both panels validate/build/default-param the identical way -- the
@@ -174,7 +176,7 @@ export function Panel({
         <span className="drag-pill">y = t 드래그</span>
       </header>
       <div className="graph-stage">
-        <GraphCanvas curves={curves} points={points} horizontalLine={horizontalLine} />
+        <GraphCanvas curves={curves} points={points} horizontalLine={horizontalLine} inkStrokes={inkStrokes} onInkStrokesChange={onInkStrokesChange} inkLabel="source graph" />
         <p className="graph-stage__hint">휠로 확대 · 드래그로 이동</p>
       </div>
       <div className="expression-sheet">

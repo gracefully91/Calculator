@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState } from 'react'
 import JXG from 'jsxgraph'
+import { InkLayer } from './InkLayer'
 import { drawAxes, drawCurve, drawPointMarker } from '../core/canvasRenderer'
 import { worldToScreen, screenToWorld, resolveRenderedSize } from '../core/viewport'
 
@@ -24,7 +25,7 @@ const LINE_HIT_THRESHOLD_PX = 8
 //   y=horizontalLine.y 위치에 드래그 가능한 빨간 점선을 그린다. 이 선 근처(8px 이내)에서
 //   mousedown하면 팬 대신 onDrag가 호출된다 (팬과 달리 GraphCanvas의 로컬 worldView는
 //   바뀌지 않고, 부모가 준 콜백을 통해 t 같은 외부 상태를 갱신하는 용도).
-export function GraphCanvas({ curves, points, width = 400, height = 400, onCanvasClick, horizontalLine }) {
+export function GraphCanvas({ curves, points, width = 400, height = 400, onCanvasClick, horizontalLine, inkStrokes, onInkStrokesChange, inkLabel }) {
   const canvasRef = useRef(null)
   const boardElementRef = useRef(null)
   const boardInstanceRef = useRef(null)
@@ -277,6 +278,7 @@ export function GraphCanvas({ curves, points, width = 400, height = 400, onCanva
         onMouseLeave={handleMouseUp}
         onClick={(e) => onCanvasClick?.(e, view)}
       />
+      <InkLayer strokes={inkStrokes} onStrokesChange={onInkStrokesChange} label={inkLabel} />
     </div>
   )
 }

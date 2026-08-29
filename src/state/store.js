@@ -43,9 +43,17 @@ export const useAppStore = create((set) => ({
   // component state in LinkedFunctionPanel, not in the store.
   traceOn: false,
 
+  // Freehand annotations are screen-space note strokes, independent from the
+  // mathematical objects. Each panel owns its own list so a note on f(x)
+  // never appears on the linked h(t) graph.
+  leftInkStrokes: [],
+  rightInkStrokes: [],
+
   setT: (t) => set({ t }),
   setParam: (name, value) => set((s) => ({ params: { ...s.params, [name]: value } })),
   setLeftFunctionSource: (source) => set({ leftFunctionSource: source }),
   setLeftPieces: (pieces) => set({ leftPieces: pieces }),
+  setLeftInkStrokes: (strokes) => set({ leftInkStrokes: strokes }),
+  setRightInkStrokes: (strokes) => set({ rightInkStrokes: strokes }),
   toggleTrace: () => set((s) => ({ traceOn: !s.traceOn })),
 }))

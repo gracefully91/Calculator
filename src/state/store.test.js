@@ -59,4 +59,13 @@ describe('useAppStore', () => {
     useAppStore.getState().toggleTrace()
     expect(useAppStore.getState().traceOn).toBe(false)
   })
+
+  it('keeps independent freehand stroke lists for the two graph panels', () => {
+    const left = [{ points: [{ x: 0.1, y: 0.2 }] }]
+    const right = [{ points: [{ x: 0.8, y: 0.7 }] }]
+    useAppStore.getState().setLeftInkStrokes(left)
+    useAppStore.getState().setRightInkStrokes(right)
+    expect(useAppStore.getState().leftInkStrokes).toEqual(left)
+    expect(useAppStore.getState().rightInkStrokes).toEqual(right)
+  })
 })

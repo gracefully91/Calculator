@@ -33,7 +33,7 @@ describe('App — responsive layout (Task 17)', () => {
 describe('App — full two-panel layout (Task 15)', () => {
   it('renders both the left Panel and the right LinkedFunctionPanel, plus LinkBar, side by side', () => {
     const { container } = render(<App />)
-    const canvases = container.querySelectorAll('canvas')
+    const canvases = container.querySelectorAll('.graph-canvas--fallback')
     expect(canvases).toHaveLength(2)
     expect(screen.getByText(/현재 t = 0\.00/)).toBeInTheDocument()
     // Default left piece is `x` over (-inf, inf): y=x=0 crosses y=t=0 once.
@@ -42,7 +42,7 @@ describe('App — full two-panel layout (Task 15)', () => {
 
   it('dragging the left y=t line updates the store t, LinkBar, and the right panel h(t) reading together', () => {
     const { container } = render(<App />)
-    const leftCanvas = container.querySelectorAll('canvas')[0]
+    const leftCanvas = container.querySelectorAll('.graph-canvas--fallback')[0]
 
     // Same geometry as Panel.test.jsx's horizontalLineT drag test: default
     // 400x400 view -8..8, y=0 line sits at screen y=200; dragging to

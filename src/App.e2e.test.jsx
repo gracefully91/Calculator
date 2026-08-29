@@ -115,7 +115,7 @@ describe('Task 18 — end-to-end verification against the 52-problem, driven thr
     try {
       // ---- Step 1: the app boots ----
       const { container } = render(<App />)
-      const canvases = container.querySelectorAll('canvas')
+      const canvases = container.querySelectorAll('.graph-canvas--fallback')
       expect(canvases).toHaveLength(2)
       const [leftCanvas, rightCanvas] = canvases
 
