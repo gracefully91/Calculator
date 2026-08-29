@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState } from 'react'
+import JXG from 'jsxgraph'
 import { drawAxes, drawCurve, drawPointMarker } from '../core/canvasRenderer'
 import { worldToScreen, screenToWorld, resolveRenderedSize } from '../core/viewport'
 
@@ -25,6 +26,10 @@ const LINE_HIT_THRESHOLD_PX = 8
 //   바뀌지 않고, 부모가 준 콜백을 통해 t 같은 외부 상태를 갱신하는 용도).
 export function GraphCanvas({ curves, points, width = 400, height = 400, onCanvasClick, horizontalLine }) {
   const canvasRef = useRef(null)
+  const boardElementRef = useRef(null)
+  const boardInstanceRef = useRef(null)
+  const boardObjectsRef = useRef([])
+  const [boardReady, setBoardReady] = useState(false)
   const [worldView, setWorldView] = useState(DEFAULT_VIEW)
   // Drag state must survive re-renders (setWorldView during a drag causes
   // one), so a plain `let` in the component body would be reset to null on
@@ -42,6 +47,103 @@ export function GraphCanvas({ curves, points, width = 400, height = 400, onCanva
   const dragStartRef = useRef(null)
 
   const view = { ...worldView, width, height }
+
+  // JSXGraph is the interactive, browser-facing graph engine. The canvas
+  // implementation below remains mounted as a jsdom-safe fallback: jsdom has
+  // no layout dimensions or SVG support, while the real application receives
+  // this full pan/zoom/drag board. Keeping that fallback also avoids breaking
+  // persisted views while this migration is rolled out.
+  useEffect(() => {
+    const element = boardElementRef.current
+    if (!element || element.clientWidth === 0 || element.clientHeight === 0) return undefined
+
+    let board
+    try {
+      board = JXG.JSXGraph.initBoard(element, {
+        boundingbox: [DEFAULT_VIEW.xMin, DEFAULT_VIEW.yMax, DEFAULT_VIEW.xMax, DEFAULT_VIEW.yMin],
+        axis: true,
+        grid: true,
+        keepaspectratio: false,
+        showCopyright: false,
+        showNavigation: false,
+        pan: { enabled: true, needTwoFingers: false },
+        zoom: { wheel: true, pinch: true, needShift: false },
+      })
+      boardInstanceRef.current = board
+      setBoardReady(true)
+    } catch {
+      // A failed board init should never prevent the worksheet from opening:
+      // the legacy canvas continues to render in that rare environment.
+      return undefined
+    }
+
+    return () => {
+      boardObjectsRef.current = []
+      boardInstanceRef.current = null
+      JXG.JSXGraph.freeBoard(board)
+    }
+  }, [])
+
+  useEffect(() => {
+    const board = boardInstanceRef.current
+    if (!board) return
+
+    boardObjectsRef.current.forEach((object) => board.removeObject(object))
+    const objects = []
+
+    curves.forEach(({ fn, range }, index) => {
+      try {
+        objects.push(board.create('functiongraph', [fn, range.xMin, range.xMax], {
+          strokeColor: index % 2 === 0 ? '#0f8a7b' : '#2563eb',
+          strokeWidth: 3,
+          highlight: false,
+          fixed: true,
+        }))
+      } catch {
+        // A transient invalid expression is already surfaced by Panel; skip
+        // only its visual object until the next valid input arrives.
+      }
+    })
+
+    points.forEach((point) => {
+      if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) return
+      objects.push(board.create('point', [point.x, point.y], {
+        name: '',
+        size: 3,
+        fixed: true,
+        strokeColor: '#0f8a7b',
+        fillColor: point.closed ? '#0f8a7b' : '#ffffff',
+        fillOpacity: point.closed ? 1 : 0,
+        highlight: false,
+      }))
+    })
+
+    if (horizontalLine) {
+      const line = board.create('line', [[0, horizontalLine.y], [1, horizontalLine.y]], {
+        name: '',
+        straightFirst: true,
+        straightLast: true,
+        fixed: true,
+        strokeColor: '#dc2626',
+        strokeWidth: 2,
+        dash: 2,
+        highlight: false,
+      })
+      const handle = board.create('point', [0, horizontalLine.y], {
+        name: 't',
+        size: 4,
+        strokeColor: '#dc2626',
+        fillColor: '#ffffff',
+        fixed: false,
+        highlight: true,
+      })
+      handle.on('drag', () => horizontalLine.onDrag?.(handle.Y()))
+      objects.push(line, handle)
+    }
+
+    boardObjectsRef.current = objects
+    board.update()
+  }, [curves, points, horizontalLine, boardReady])
 
   // Task 17 (responsive layout) lets CSS stretch the canvas's *rendered*
   // size (style width:100%/height:auto below) away from its *resolution*
@@ -154,24 +256,27 @@ export function GraphCanvas({ curves, points, width = 400, height = 400, onCanva
   }
 
   return (
-    <canvas
-      ref={canvasRef}
-      className="graph-canvas"
-      width={width}
-      height={height}
+    <div className={`graph-canvas-host${boardReady ? ' graph-canvas-host--jsxgraph' : ''}`}>
+      <div ref={boardElementRef} className="jsxgraph-board" aria-label="interactive graph" />
+      <canvas
+        ref={canvasRef}
+        className="graph-canvas graph-canvas--fallback"
+        width={width}
+        height={height}
       // Task 17: let the canvas's *rendered* size follow its flex container
       // (width:100%) while keeping its drawing-buffer *resolution* fixed at
       // the width/height attributes above -- aspect ratio is preserved via
       // height:auto. See renderedSize() above for why every handler that
       // touches getBoundingClientRect() has to correct for the resulting
       // rendered-vs-resolution scale.
-      style={{ width: '100%', height: 'auto' }}
-      onWheel={handleWheel}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
-      onClick={(e) => onCanvasClick?.(e, view)}
-    />
+        style={{ width: '100%', height: 'auto' }}
+        onWheel={handleWheel}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        onClick={(e) => onCanvasClick?.(e, view)}
+      />
+    </div>
   )
 }

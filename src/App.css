@@ -17,6 +17,9 @@
 .trace-toggle input { accent-color: #0f8a7b; margin: 0; }
 
 .graph-stage { position: relative; background: #fff; }
+.graph-canvas-host { position: relative; width: 100%; aspect-ratio: 1; }
+.jsxgraph-board { width: 100%; height: 100%; min-height: 280px; background: #fff; }
+.graph-canvas-host--jsxgraph .graph-canvas--fallback { display: none; }
 .graph-canvas { display: block; width: 100%; height: auto; cursor: grab; touch-action: none; background-color: #fff; background-image: linear-gradient(rgba(122,135,146,.13) 1px, transparent 1px), linear-gradient(90deg, rgba(122,135,146,.13) 1px, transparent 1px), linear-gradient(rgba(122,135,146,.21) 1px, transparent 1px), linear-gradient(90deg, rgba(122,135,146,.21) 1px, transparent 1px); background-size: 6.25% 6.25%, 6.25% 6.25%, 31.25% 31.25%, 31.25% 31.25%; }
 .graph-canvas:active { cursor: grabbing; }
 .graph-stage__hint { position: absolute; right: 12px; bottom: 10px; margin: 0; border-radius: 999px; background: rgba(255,255,255,.85); color: #7b858d; font-size: .66rem; padding: 5px 8px; pointer-events: none; }
@@ -37,6 +40,9 @@
 .piece-editor__equation { min-width: 0; }
 .piece-editor__equation .cm-editor { border: 0; background: transparent; font-size: 1rem; }
 .piece-editor__equation .cm-scroller { font-family: ui-monospace, Consolas, monospace; }
+.equation-input { display: block; box-sizing: border-box; width: 100%; min-height: 2.4rem; border: 0; border-bottom: 1px solid #dfe5e7; border-radius: 0; padding: .35rem .15rem; background: transparent; color: #1d252a; font-size: 1.08rem; }
+.equation-input:focus { outline: 2px solid rgba(15,138,123,.24); outline-offset: 2px; border-radius: 6px; }
+.equation-input--test { font-family: ui-monospace, Consolas, monospace; }
 .piece-editor__delete { color: #a24b4b; font-size: .75rem; }
 .domain-controls { grid-column: 2 / -1; color: #78838b; font-size: .72rem; }
 .domain-controls summary { cursor: pointer; }
