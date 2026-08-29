@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { GraphCanvas } from './GraphCanvas'
 import { EquationInput } from './EquationInput'
 import { ParamSliders } from './ParamSliders'
-import { ObjectList } from './ObjectList'
 import { usePiecewiseFunction } from '../hooks/usePiecewiseFunction'
 
 // A brand-new piece starts fully unbounded (domain: [null, null]) -- there is
@@ -18,11 +17,10 @@ import { usePiecewiseFunction } from '../hooks/usePiecewiseFunction'
 // a distinct one.
 const EMPTY_PIECE_SHAPE = { expr: 'x', domain: [null, null], closedAt: { left: null, right: null } }
 
-// ObjectList (Task 16) swatch colors. Cycled by index inside ObjectList
-// itself (colors[i % colors.length]), so an arbitrary number of pieces is
-// fine -- this is just the fixed palette to cycle through, not a
-// per-piece assignment that needs to be kept in sync with anything.
-const OBJECT_LIST_COLORS = ['#2563eb', '#dc2626', '#16a34a', '#d97706', '#9333ea', '#0891b2']
+// GeoGebra-style object-row colors. The palette cycles by row index, so an
+// arbitrary number of graphs is fine without a separate color-state model.
+const OBJECT_LIST_COLORS = ['#0f8a7b', '#2563eb', '#dc2626', '#16a34a', '#d97706', '#9333ea']
+const FUNCTION_NAMES = ['f', 'g', 'h', 'p', 'q', 'r']
 
 export function Panel({
   pieces,
@@ -45,7 +43,7 @@ export function Panel({
   // itself displays, before the user ever drags anything.
   const { fn, error, freeVars } = usePiecewiseFunction(pieces, params)
 
-  // ObjectList (Task 16) visibility, keyed by piece **id** rather than array
+  // Object-row visibility, keyed by piece **id** rather than array
   // index/position. A Set of *hidden* ids (not "shown" ids) so a freshly
   // added piece -- which has no entry in this set at all -- defaults to
   // visible without Panel having to seed an entry for it on every addPiece.
@@ -77,12 +75,13 @@ export function Panel({
   // that single point undrawn -- the open/closed *marker* itself is drawn
   // separately, via `points` below). `fn.pieces[i]` corresponds to
   // `pieces[i]` (same order, same length -- see note above), so `pieces[i].id`
-  // is what ObjectList's toggle actually flips.
+  // is what the color-circle toggle actually flips.
   const curves = fn
-    ? fn.pieces
-        .filter((_, i) => isVisible(pieces[i]?.id))
-        .map((p) => ({
+    ? fn.pieces.flatMap((p, i) => {
+        if (!isVisible(pieces[i]?.id)) return []
+        return [{
           fn: (x) => (fn.contains(p, x) ? p.evaluate(x) : NaN),
+          color: OBJECT_LIST_COLORS[i % OBJECT_LIST_COLORS.length],
           range: {
             // null means an unbounded mathematical domain. GraphCanvas turns
             // that into the board's *current* visible x range, not the old
@@ -90,7 +89,8 @@ export function Panel({
             xMin: p.domain[0],
             xMax: p.domain[1],
           },
-        }))
+        }]
+      })
     : []
 
   // One marker per finite domain boundary (both edges for a piece bounded on
@@ -108,12 +108,13 @@ export function Panel({
     ? fn.pieces.flatMap((p, i) => {
         if (!isVisible(pieces[i]?.id)) return []
         const marks = []
+        const color = OBJECT_LIST_COLORS[i % OBJECT_LIST_COLORS.length]
         const [lo, hi] = p.domain
         if (lo !== null && lo !== undefined) {
-          marks.push({ x: lo, y: p.evaluate(lo), closed: p.closedAt.left !== false })
+          marks.push({ x: lo, y: p.evaluate(lo), closed: p.closedAt.left !== false, color })
         }
         if (hi !== null && hi !== undefined) {
-          marks.push({ x: hi, y: p.evaluate(hi), closed: p.closedAt.right !== false })
+          marks.push({ x: hi, y: p.evaluate(hi), closed: p.closedAt.right !== false, color })
         }
         return marks
       })
@@ -150,7 +151,7 @@ export function Panel({
     // (e.g. loaded from the store, or from pieces created before ids existed)
     // already carry.
     const nextId = Math.max(0, ...pieces.map((p) => p.id ?? 0)) + 1
-    onPiecesChange([...pieces, { id: nextId, ...EMPTY_PIECE_SHAPE }])
+    onPiecesChange([...pieces, { id: nextId, independent: true, ...EMPTY_PIECE_SHAPE }])
   }
 
   function removePiece(index) {
@@ -185,19 +186,12 @@ export function Panel({
         <div className="sheet-handle" aria-hidden="true" />
         <div className="expression-sheet__heading">
           <span>함수 목록</span>
-          <button type="button" aria-label="add piece" onClick={addPiece}>
-            <span aria-hidden="true">＋</span> 함수 추가
-          </button>
         </div>
-      <ObjectList
-        pieces={pieces}
-        isVisible={isVisible}
-        onToggle={toggleVisibility}
-        colors={OBJECT_LIST_COLORS}
-      />
       <div className="piece-editors">
       {pieces.map((piece, i) => {
         const [min, max] = piece.domain
+        const color = OBJECT_LIST_COLORS[i % OBJECT_LIST_COLORS.length]
+        const name = piece.name ?? FUNCTION_NAMES[i] ?? `f${i + 1}`
         return (
           // Key on the piece's stable id, not its array index: deleting an
           // earlier piece shifts every later index down, and an index key
@@ -207,7 +201,15 @@ export function Panel({
           // controlled `value` prop. Fall back to index only for pieces
           // built before `id` existed (e.g. older test fixtures).
           <div key={piece.id ?? i} className="piece-editor">
-            <span className="piece-editor__name">f{i + 1}</span>
+            <button
+              className="piece-editor__visibility"
+              type="button"
+              aria-label={`toggle visibility ${i + 1}`}
+              aria-pressed={isVisible(piece.id)}
+              onClick={() => toggleVisibility(piece.id)}
+              style={{ '--function-color': color }}
+            />
+            <span className="piece-editor__name">{name}:</span>
             <div className="piece-editor__equation">
               <EquationInput
                 label={`piece expression ${i + 1}`}
@@ -216,13 +218,8 @@ export function Panel({
                 error={null}
               />
             </div>
-            {pieces.length > 1 && (
-              <button className="piece-editor__delete" type="button" onClick={() => removePiece(i)}>
-                삭제
-              </button>
-            )}
-            <details className="domain-controls">
-              <summary>구간 설정</summary>
+            <details className="piece-editor__menu">
+              <summary aria-label={`function menu ${i + 1}`}>⋮</summary>
               <div className="domain-controls__fields">
                 <label>
                   시작
@@ -241,10 +238,12 @@ export function Panel({
                   포함
                 </label>
               </div>
+              {pieces.length > 1 && <button className="piece-editor__delete" type="button" onClick={() => removePiece(i)}>삭제</button>}
             </details>
           </div>
         )
       })}
+      <button className="piece-editor__add" type="button" aria-label="add piece" onClick={addPiece}><span aria-hidden="true">＋</span> 입력...</button>
       </div>
       {freeVars.length > 0 && <ParamSliders names={freeVars} values={params} onChange={onParamChange} />}
       {error && <div className="expression-error">{error}</div>}

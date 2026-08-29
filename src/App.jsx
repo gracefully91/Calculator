@@ -3,6 +3,7 @@ import { useAppStore } from './state/store'
 import { Panel } from './components/Panel'
 import { LinkBar } from './components/LinkBar'
 import { LinkedFunctionPanel } from './components/LinkedFunctionPanel'
+import { MathKeyboardToggle } from './components/MathKeyboardToggle'
 
 // The right-hand panel (LinkedFunctionPanel, Task 15) reads the exact same
 // leftPieces/params as the left Panel -- it isn't a second, independently
@@ -28,6 +29,8 @@ export default function App() {
   const setRightGraphMode = useAppStore((s) => s.setRightGraphMode)
   const rightGraphExpression = useAppStore((s) => s.rightGraphExpression)
   const setRightGraphExpression = useAppStore((s) => s.setRightGraphExpression)
+  const rightGraphVisible = useAppStore((s) => s.rightGraphVisible)
+  const toggleRightGraphVisible = useAppStore((s) => s.toggleRightGraphVisible)
   const rightGraphTitle = rightGraphMode === 'custom'
     ? 'g(x) 사용자 그래프'
     : rightGraphMode === 'derivative'
@@ -65,10 +68,11 @@ export default function App() {
               <span>Trace On</span>
             </label>}
           </header>
-          <LinkedFunctionPanel pieces={leftPieces} params={params} onParamChange={setParam} t={t} traceOn={traceOn} inkStrokes={rightInkStrokes} onInkStrokesChange={setRightInkStrokes} mode={rightGraphMode} onModeChange={setRightGraphMode} expression={rightGraphExpression} onExpressionChange={setRightGraphExpression} />
+          <LinkedFunctionPanel pieces={leftPieces} params={params} onParamChange={setParam} t={t} traceOn={traceOn} inkStrokes={rightInkStrokes} onInkStrokesChange={setRightInkStrokes} mode={rightGraphMode} onModeChange={setRightGraphMode} expression={rightGraphExpression} onExpressionChange={setRightGraphExpression} visible={rightGraphVisible} onToggleVisible={toggleRightGraphVisible} />
         </section>
       </div>
       <LinkBar t={t} />
+      <MathKeyboardToggle />
     </main>
   )
 }

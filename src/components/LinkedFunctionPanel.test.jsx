@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { LinkedFunctionPanel } from './LinkedFunctionPanel'
 import { RIGHT_GRAPH_MODES } from '../core/rightGraphPresets'
 
@@ -48,6 +49,17 @@ async function withFakeCanvasContext(run) {
 }
 
 describe('LinkedFunctionPanel', () => {
+  it('uses the same color-circle visibility control for the right graph', async () => {
+    const onToggleVisible = vi.fn()
+    render(<LinkedFunctionPanel pieces={pieces} params={{}} t={0} onToggleVisible={onToggleVisible} />)
+    const toggle = screen.getByLabelText('toggle right graph visibility')
+    expect(toggle).toHaveAttribute('aria-pressed', 'true')
+
+    await userEvent.click(toggle)
+
+    expect(onToggleVisible).toHaveBeenCalledOnce()
+  })
+
   it('shows a right-side MathLive expression only in custom-function mode', () => {
     render(
       <LinkedFunctionPanel

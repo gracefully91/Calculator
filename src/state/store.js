@@ -50,6 +50,7 @@ export const useAppStore = create((set) => ({
   rightInkStrokes: [],
   rightGraphMode: 'intersection-count',
   rightGraphExpression: 'x',
+  rightGraphVisible: true,
 
   setT: (t) => set({ t }),
   setParam: (name, value) => set((s) => ({ params: { ...s.params, [name]: value } })),
@@ -59,5 +60,6 @@ export const useAppStore = create((set) => ({
   setRightInkStrokes: (strokes) => set({ rightInkStrokes: strokes }),
   setRightGraphMode: (rightGraphMode) => set({ rightGraphMode }),
   setRightGraphExpression: (rightGraphExpression) => set({ rightGraphExpression }),
+  toggleRightGraphVisible: () => set((s) => ({ rightGraphVisible: !s.rightGraphVisible })),
   toggleTrace: () => set((s) => ({ traceOn: !s.traceOn })),
 }))

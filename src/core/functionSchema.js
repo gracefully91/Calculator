@@ -39,6 +39,7 @@ export function validatePiecewise(def) {
     return {
       expr,
       domain,
+      independent: piece.independent === true,
       // Default per-field, not the whole object: a partial closedAt like {} or
       // { right: true } must not leave the other field as `undefined` — `undefined`
       // isn't valid JSON and would silently drop out of a JSON.stringify round-trip.
@@ -56,6 +57,9 @@ export function validatePiecewise(def) {
     return aLo - bLo
   })
   for (let i = 0; i < sorted.length - 1; i++) {
+    // A GeoGebra-style “+ 입력” row is an independent graph, not another
+    // piece of the same f(x), so it may overlap any other graph.
+    if (sorted[i].independent || sorted[i + 1].independent) continue
     const currHi = sorted[i].domain[1] ?? Infinity
     const nextLo = sorted[i + 1].domain[0] ?? -Infinity
     if (currHi > nextLo) {

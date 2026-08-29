@@ -163,6 +163,20 @@ describe('validatePiecewise', () => {
     expect(result.ok).toBe(true)
   })
 
+  it('allows an independent graph to share another graph\'s domain', () => {
+    // The GeoGebra-style + 입력 row adds another visible graph, not another
+    // branch of the same f(x), so both may be defined on all real x.
+    const result = validatePiecewise({
+      type: 'piecewise',
+      pieces: [
+        { expr: 'x', domain: [null, null], closedAt: {} },
+        { expr: 'x^2', domain: [null, null], independent: true, closedAt: {} },
+      ],
+    })
+    expect(result.ok).toBe(true)
+    expect(result.normalized.pieces[1].independent).toBe(true)
+  })
+
   it('defaults closedAt per-field so a partial object does not leave undefined fields', () => {
     // Whole-object defaulting (piece.closedAt ?? {...}) leaves the *other* field as
     // undefined when only one field is provided, which breaks JSON.stringify

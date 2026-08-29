@@ -100,7 +100,7 @@ export function GraphCanvas({ curves, points, width = 400, height = 400, onCanva
     boardObjectsRef.current.forEach((object) => board.removeObject(object))
     const objects = []
 
-    curves.forEach(({ fn, range }, index) => {
+    curves.forEach(({ fn, range, color }, index) => {
       try {
         // JSXGraph accepts functions for a curve's endpoint. Unbounded
         // pieces therefore sample exactly the currently visible board width
@@ -109,7 +109,7 @@ export function GraphCanvas({ curves, points, width = 400, height = 400, onCanva
         const minX = range.xMin ?? (() => board.getBoundingBox()[0])
         const maxX = range.xMax ?? (() => board.getBoundingBox()[2])
         objects.push(board.create('functiongraph', [fn, minX, maxX], {
-          strokeColor: index % 2 === 0 ? '#0f8a7b' : '#2563eb',
+          strokeColor: color ?? (index % 2 === 0 ? '#0f8a7b' : '#2563eb'),
           strokeWidth: 3,
           highlight: false,
           fixed: true,
@@ -126,8 +126,8 @@ export function GraphCanvas({ curves, points, width = 400, height = 400, onCanva
         name: '',
         size: 3,
         fixed: true,
-        strokeColor: '#0f8a7b',
-        fillColor: point.closed ? '#0f8a7b' : '#ffffff',
+        strokeColor: point.color ?? '#0f8a7b',
+        fillColor: point.closed ? (point.color ?? '#0f8a7b') : '#ffffff',
         fillOpacity: point.closed ? 1 : 0,
         highlight: false,
       }))

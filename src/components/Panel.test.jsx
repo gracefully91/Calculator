@@ -53,6 +53,10 @@ describe('Panel — piecewise editing', () => {
     const next = onPiecesChange.mock.calls[0][0]
     expect(next).toHaveLength(2)
     expect(next[0]).toEqual(initial[0])
+    // The plus row creates a separate graph object, so it can share the
+    // original function's x-domain instead of immediately failing the
+    // piecewise-domain overlap validation.
+    expect(next[1].independent).toBe(true)
   })
 
   it('calls onPiecesChange with the piece removed when its delete button is clicked', async () => {
@@ -515,12 +519,15 @@ describe('Panel — ObjectList (Task 16): visibility toggle actually filters the
     }
   })
 
-  it('ObjectList renders one row per piece with a code element showing its expr', () => {
-    render(<Panel pieces={pieces} onPiecesChange={vi.fn()} params={{}} />)
-    const items = screen.getAllByRole('listitem')
-    expect(items).toHaveLength(2)
-    expect(items[0]).toHaveTextContent('2*x^3-6*x+1')
-    expect(items[1]).toHaveTextContent('3*(x-2)*(x-6)+9')
+  it('renders GeoGebra-style inline object rows with a formula and color toggle', () => {
+    const { container } = render(<Panel pieces={pieces} onPiecesChange={vi.fn()} params={{}} />)
+    const rows = container.querySelectorAll('.piece-editor')
+    expect(rows).toHaveLength(2)
+    expect(rows[0]).toHaveTextContent('f:')
+    expect(rows[1]).toHaveTextContent('g:')
+    expect(screen.getByLabelText('piece expression 1')).toHaveValue('2*x^3-6*x+1')
+    expect(screen.getByLabelText('piece expression 2')).toHaveValue('3*(x-2)*(x-6)+9')
+    expect(screen.getByLabelText('toggle visibility 1')).toHaveAttribute('aria-pressed', 'true')
   })
 
   it('keeps per-piece visibility keyed by piece id (not array position) across a delete', async () => {
@@ -541,17 +548,17 @@ describe('Panel — ObjectList (Task 16): visibility toggle actually filters the
     render(<StatefulPanel initialPieces={initial} onChangeSpy={onChangeSpy} />)
 
     await userEvent.click(screen.getByLabelText('toggle visibility 2')) // hides piece id=2
-    expect(screen.getByLabelText('toggle visibility 2').textContent).toBe('👁️‍🗨️')
+    expect(screen.getByLabelText('toggle visibility 2')).toHaveAttribute('aria-pressed', 'false')
 
     const deleteButtons = screen.getAllByRole('button', { name: /삭제|remove/i })
     await userEvent.click(deleteButtons[0]) // deletes piece id=1
 
     // Row 1 is now piece id=2 (still hidden); row 2 is now piece id=3 (still visible).
-    const items = screen.getAllByRole('listitem')
-    expect(items).toHaveLength(2)
-    expect(items[0]).toHaveTextContent('x^2')
-    expect(items[1]).toHaveTextContent('x^3')
-    expect(screen.getByLabelText('toggle visibility 1').textContent).toBe('👁️‍🗨️')
-    expect(screen.getByLabelText('toggle visibility 2').textContent).toBe('👁️')
+    const rows = document.querySelectorAll('.piece-editor')
+    expect(rows).toHaveLength(2)
+    expect(screen.getByLabelText('piece expression 1')).toHaveValue('x^2')
+    expect(screen.getByLabelText('piece expression 2')).toHaveValue('x^3')
+    expect(screen.getByLabelText('toggle visibility 1')).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByLabelText('toggle visibility 2')).toHaveAttribute('aria-pressed', 'true')
   })
 })

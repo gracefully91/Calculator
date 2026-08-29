@@ -75,4 +75,10 @@ describe('useAppStore', () => {
     expect(useAppStore.getState().rightGraphMode).toBe('custom')
     expect(useAppStore.getState().rightGraphExpression).toBe('x^2-4')
   })
+
+  it('keeps the right graph visibility with its shared graph state', () => {
+    expect(useAppStore.getState().rightGraphVisible).toBe(true)
+    useAppStore.getState().toggleRightGraphVisible()
+    expect(useAppStore.getState().rightGraphVisible).toBe(false)
+  })
 })

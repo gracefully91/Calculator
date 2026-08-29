@@ -48,7 +48,7 @@ export function EquationInput({ value, onChange, error, label }) {
         className="equation-input"
         aria-label={label}
         role="textbox"
-        virtual-keyboard-mode="onfocus"
+        virtual-keyboard-mode="manual"
         onInput={(event) => onChange(latexToExpression(event.currentTarget.value))}
       >
         {latex}

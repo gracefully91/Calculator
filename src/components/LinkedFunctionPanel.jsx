@@ -25,6 +25,8 @@ export function LinkedFunctionPanel({
   onModeChange = () => {},
   expression = 'x',
   onExpressionChange = () => {},
+  visible = true,
+  onToggleVisible = () => {},
 }) {
   const { fn, error: sourceError } = usePiecewiseFunction(pieces, params)
   const isIntersectionCount = mode === RIGHT_GRAPH_MODES.INTERSECTION_COUNT
@@ -92,20 +94,25 @@ export function LinkedFunctionPanel({
   return (
     <div className="linked-function-panel">
       <div className="graph-stage">
-        <GraphCanvas curves={curves} points={points} inkStrokes={inkStrokes} onInkStrokesChange={onInkStrokesChange} inkLabel="linked graph" />
+        <GraphCanvas curves={visible ? curves : []} points={visible ? points : []} inkStrokes={inkStrokes} onInkStrokesChange={onInkStrokesChange} inkLabel="linked graph" />
         <p className="graph-stage__hint">{hint}</p>
       </div>
       <div className="expression-sheet expression-sheet--linked">
         <div className="sheet-handle" aria-hidden="true" />
-        <label className="right-graph-mode">
-          <span>오른쪽 그래프</span>
-          <select aria-label="right graph mode" value={mode} onChange={(event) => onModeChange(event.target.value)}>
-            {Object.entries(RIGHT_GRAPH_MODE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-          </select>
-        </label>
+        <div className="right-object-row">
+          <button className="piece-editor__visibility" type="button" aria-label="toggle right graph visibility" aria-pressed={visible} onClick={onToggleVisible} style={{ '--function-color': '#2563eb' }} />
+          <span className="piece-editor__name">{isCustom ? 'g:' : isDerivative ? 'f′:' : 'h:'}</span>
+          {isCustom
+            ? <EquationInput label="right graph expression" value={expression} onChange={onExpressionChange} error={null} />
+            : <span className="right-object-row__label">{RIGHT_GRAPH_MODE_LABELS[mode]}</span>}
+          <details className="piece-editor__menu">
+            <summary aria-label="right graph menu">⋮</summary>
+            <select aria-label="right graph mode" value={mode} onChange={(event) => onModeChange(event.target.value)}>
+              {Object.entries(RIGHT_GRAPH_MODE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </select>
+          </details>
+        </div>
         {isCustom ? <>
-          <div className="linked-equation"><span className="linked-equation__dot" /> g(x)</div>
-          <EquationInput label="right graph expression" value={expression} onChange={onExpressionChange} error={null} />
           {customFreeVars.length > 0 && <ParamSliders names={customFreeVars} values={params} onChange={onParamChange} />}
           {error && <div className="expression-error">{error}</div>}
         </> : error ? <div className="expression-error">{error}</div> : <>
@@ -118,6 +125,7 @@ export function LinkedFunctionPanel({
             <div className="linked-reading"><span>현재 연결값</span><strong>f′({t.toFixed(2)}) = {numericalDerivative(fn, t).toFixed(2)}</strong></div>
           </>}
         </>}
+        {!isCustom && <button className="piece-editor__add" type="button" onClick={() => onModeChange(RIGHT_GRAPH_MODES.CUSTOM)}>＋ 입력...</button>}
       </div>
     </div>
   )
