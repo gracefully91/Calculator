@@ -41,6 +41,14 @@ describe('App.css (Task 17 responsive layout)', () => {
     expect(mainRowInMedia[1]).toMatch(/flex-direction:\s*column/)
   })
 
+  it('splits the source graph and its open function-editor accordion into mobile cards', () => {
+    const mediaMatch = css.match(/@media\s*\(max-width:\s*768px\)\s*\{([\s\S]*?)\n\}/)
+    const mediaBody = mediaMatch[1]
+    expect(mediaBody).toMatch(/\.calculator-card--source\s*\{[^}]*display:\s*grid/)
+    expect(mediaBody).toMatch(/\.source-panel__graph,\s*\.source-panel__editor\s*\{[^}]*border:/)
+    expect(mediaBody).toMatch(/\.source-panel__editor\s*>\s*summary\s*\{[^}]*display:\s*flex/)
+  })
+
   it('makes each direct child of .main-row a flexible 400px-basis item that can shrink below its content width', () => {
     const childRule = css.match(/\.main-row\s*>\s*\*\s*\{([^}]*)\}/)
     expect(childRule).not.toBeNull()

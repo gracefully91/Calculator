@@ -166,18 +166,22 @@ export function Panel({
 
   return (
     <section className="calculator-card calculator-card--source" aria-labelledby="source-graph-title">
-      <header className="calculator-card__header">
-        <div>
-          <p className="calculator-card__eyebrow">원함수</p>
-          <h2 id="source-graph-title">f(x) 그래프</h2>
+      <div className="source-panel__graph">
+        <header className="calculator-card__header">
+          <div>
+            <p className="calculator-card__eyebrow">원함수</p>
+            <h2 id="source-graph-title">f(x) 그래프</h2>
+          </div>
+          <span className="drag-pill">y = t 드래그</span>
+        </header>
+        <div className="graph-stage">
+          <GraphCanvas curves={curves} points={points} horizontalLine={horizontalLine} inkStrokes={inkStrokes} onInkStrokesChange={onInkStrokesChange} inkLabel="source graph" />
+          <p className="graph-stage__hint">휠로 확대 · 드래그로 이동</p>
         </div>
-        <span className="drag-pill">y = t 드래그</span>
-      </header>
-      <div className="graph-stage">
-        <GraphCanvas curves={curves} points={points} horizontalLine={horizontalLine} inkStrokes={inkStrokes} onInkStrokesChange={onInkStrokesChange} inkLabel="source graph" />
-        <p className="graph-stage__hint">휠로 확대 · 드래그로 이동</p>
       </div>
-      <div className="expression-sheet">
+      <details className="source-panel__editor" open>
+        <summary><span>함수 편집</span><span>{pieces.length}개</span></summary>
+        <div className="expression-sheet">
         <div className="sheet-handle" aria-hidden="true" />
         <div className="expression-sheet__heading">
           <span>함수 목록</span>
@@ -244,7 +248,8 @@ export function Panel({
       </div>
       {freeVars.length > 0 && <ParamSliders names={freeVars} values={params} onChange={onParamChange} />}
       {error && <div className="expression-error">{error}</div>}
-      </div>
+        </div>
+      </details>
     </section>
   )
 }

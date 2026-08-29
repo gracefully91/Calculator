@@ -28,6 +28,15 @@ function StatefulPanel({ initialPieces, onChangeSpy, params = {} }) {
 }
 
 describe('Panel — piecewise editing', () => {
+  it('keeps the mobile-oriented function editor accordion open by default', () => {
+    const { container } = render(
+      <Panel pieces={[{ expr: 'x', domain: [null, null], closedAt: {} }]} onPiecesChange={vi.fn()} params={{}} />,
+    )
+    const editor = container.querySelector('.source-panel__editor')
+    expect(editor).toHaveAttribute('open')
+    expect(screen.getByText('함수 편집')).toBeInTheDocument()
+  })
+
   it('starts with one piece row and can add another', async () => {
     render(<Panel pieces={[{ expr: 'x', domain: [null, null], closedAt: {} }]} onPiecesChange={vi.fn()} params={{}} />)
     expect(screen.getAllByLabelText(/piece expression/i)).toHaveLength(1)

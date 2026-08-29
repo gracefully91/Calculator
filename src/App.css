@@ -12,6 +12,8 @@
 
 .calculator-card { overflow: hidden; background: #fff; border: 1px solid #dce2e5; border-radius: 22px; box-shadow: 0 18px 50px rgba(42, 58, 68, .1); }
 .calculator-card__header { display: flex; min-height: 74px; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 20px; border-bottom: 1px solid #edf0f2; }
+.source-panel__editor { margin: 0; }
+.source-panel__editor > summary { display: none; }
 .drag-pill, .trace-toggle { display: inline-flex; align-items: center; gap: 7px; border-radius: 999px; background: #e8f7f4; color: #087568; font-size: .75rem; font-weight: 750; padding: 8px 11px; white-space: nowrap; }
 .trace-toggle { cursor: pointer; }
 .trace-toggle input { accent-color: #0f8a7b; margin: 0; }
@@ -90,6 +92,17 @@
   .app-header__note { text-align: left; }
   .main-row { flex-direction: column; gap: 16px; }
   .calculator-card { border-radius: 17px; }
+  .calculator-card--source { display: grid; gap: 14px; overflow: visible; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+  .source-panel__graph, .source-panel__editor { overflow: hidden; border: 1px solid #dce2e5; border-radius: 17px; background: #fff; box-shadow: 0 12px 30px rgba(42, 58, 68, .08); }
+  .source-panel__editor > summary { display: flex; align-items: center; justify-content: space-between; min-height: 50px; padding: 0 14px; color: #29414a; cursor: pointer; font-size: .86rem; font-weight: 800; list-style: none; }
+  .source-panel__editor > summary::-webkit-details-marker { display: none; }
+  .source-panel__editor > summary::after { content: '⌃'; margin-left: 8px; color: #0f8a7b; }
+  .source-panel__editor:not([open]) > summary::after { content: '⌄'; }
+  .source-panel__editor > summary span:last-child { margin-left: auto; color: #78848c; font-size: .72rem; font-weight: 700; }
+  .source-panel__editor .expression-sheet { border-top: 1px solid #e6eaec; }
   .calculator-card__header { min-height: 62px; padding: 11px 14px; }
   .expression-sheet { padding-inline: 14px; }
+  .source-panel__editor .sheet-handle { display: none; }
+  .source-panel__graph .graph-canvas-host { aspect-ratio: 4 / 3; }
+  .source-panel__graph .jsxgraph-board { min-height: 230px; }
 }
