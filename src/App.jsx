@@ -22,7 +22,14 @@ export default function App() {
   const toggleTrace = useAppStore((s) => s.toggleTrace)
 
   return (
-    <div>
+    <main className="app-shell">
+      <header className="app-header">
+        <div>
+          <p className="eyebrow">INTERSECTION LAB</p>
+          <h1>연동 그래프 계산기</h1>
+        </div>
+        <p className="app-header__note">왼쪽에서 함수를 만들고, <strong>y = t</strong> 선을 드래그해 보세요.</p>
+      </header>
       <div className="main-row">
         <Panel
           pieces={leftPieces}
@@ -32,15 +39,21 @@ export default function App() {
           horizontalLineT={t}
           onTChange={setT}
         />
-        <div>
-          <label>
-            <input type="checkbox" checked={traceOn} onChange={toggleTrace} />
-            Trace On
-          </label>
+        <section className="calculator-card calculator-card--linked" aria-labelledby="linked-graph-title">
+          <header className="calculator-card__header">
+            <div>
+              <p className="calculator-card__eyebrow">연동 결과</p>
+              <h2 id="linked-graph-title">h(t) 교점 개수</h2>
+            </div>
+            <label className="trace-toggle">
+              <input type="checkbox" checked={traceOn} onChange={toggleTrace} />
+              <span>Trace On</span>
+            </label>
+          </header>
           <LinkedFunctionPanel pieces={leftPieces} params={params} t={t} traceOn={traceOn} />
-        </div>
+        </section>
       </div>
       <LinkBar t={t} />
-    </div>
+    </main>
   )
 }

@@ -6,10 +6,11 @@
 // onChange: (name, value) => void — called on drag, wired to the store's setParam.
 export function ParamSliders({ names, values, onChange }) {
   return (
-    <div style={{ display: 'flex', gap: '1rem' }}>
+    <div className="parameter-sliders">
+      <span className="parameter-sliders__label">파라미터</span>
       {names.map((name) => (
-        <label key={name}>
-          {name} = {values[name] ?? 1}
+        <label className="parameter-slider" key={name}>
+          <span>{name} = <b>{values[name] ?? 1}</b></span>
           <input
             type="range"
             aria-label={`${name} slider`}

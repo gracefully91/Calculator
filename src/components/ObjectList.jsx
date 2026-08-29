@@ -29,17 +29,17 @@
 // render rather than stored anywhere.
 export function ObjectList({ pieces, isVisible, onToggle, colors }) {
   return (
-    <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+    <ul className="object-list">
       {pieces.map((piece, i) => {
         const visible = isVisible(piece.id)
         const color = colors[i % colors.length]
         return (
-          <li key={piece.id ?? i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <li key={piece.id ?? i}>
             <span
               aria-hidden="true"
-              style={{ width: 10, height: 10, background: color, display: 'inline-block', flexShrink: 0 }}
+              style={{ background: color }}
             />
-            <button type="button" aria-label={`toggle visibility ${i + 1}`} onClick={() => onToggle(piece.id)}>
+            <button className="object-list__visibility" type="button" aria-label={`toggle visibility ${i + 1}`} onClick={() => onToggle(piece.id)}>
               {visible ? '👁️' : '👁️‍🗨️'}
             </button>
             <code>{piece.expr}</code>

@@ -83,15 +83,18 @@ export function LinkedFunctionPanel({ pieces, params, t, traceOn = false }) {
   }, [trace, traceOn, t, count])
 
   return (
-    <div>
-      <GraphCanvas curves={[]} points={points} />
-      {error ? (
-        <div style={{ color: '#dc2626' }}>{error}</div>
-      ) : (
-        <div>
-          h({t.toFixed(2)}) = {count}
-        </div>
-      )}
+    <div className="linked-function-panel">
+      <div className="graph-stage">
+        <GraphCanvas curves={[]} points={points} />
+        <p className="graph-stage__hint">왼쪽의 y = t 변화가 이곳에 기록됩니다</p>
+      </div>
+      <div className="expression-sheet expression-sheet--linked">
+        <div className="sheet-handle" aria-hidden="true" />
+        {error ? <div className="expression-error">{error}</div> : <>
+          <div className="linked-equation"><span className="linked-equation__dot" /> h(t) = 교점 개수</div>
+          <div className="linked-reading"><span>현재 연결값</span><strong>h({t.toFixed(2)}) = {count}</strong></div>
+        </>}
+      </div>
     </div>
   )
 }

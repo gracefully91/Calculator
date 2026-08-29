@@ -1,22 +1,75 @@
-/* Task 17: responsive layout for the top-level Panel / LinkedFunctionPanel
-   row. Below 768px the two columns (each a direct child of .main-row --
-   Panel's own root div, and the div wrapping the Trace-On checkbox +
-   LinkedFunctionPanel) stack vertically instead of sitting side by side. */
-.main-row {
-  display: flex;
-  gap: 1rem;
-  padding: 1rem;
-  flex-direction: row;
-  flex-wrap: wrap;
-}
+.app-shell { max-width: 1500px; margin: 0 auto; padding: 28px; }
+
+.app-header { display: flex; align-items: end; justify-content: space-between; gap: 24px; max-width: 1320px; margin: 0 auto 22px; }
+.eyebrow, .calculator-card__eyebrow { margin: 0 0 5px; color: #0f8a7b; font-size: .7rem; font-weight: 800; letter-spacing: .12em; }
+.app-header h1, .calculator-card h2 { margin: 0; color: #1d2630; }
+.app-header h1 { font-size: clamp(1.5rem, 2.4vw, 2.2rem); }
+.calculator-card h2 { font-size: 1.15rem; }
+.app-header__note { max-width: 370px; margin: 0; color: #64707b; font-size: .9rem; text-align: right; }
+
+.main-row { display: flex; gap: 24px; padding: 0; flex-direction: row; flex-wrap: wrap; max-width: 1320px; margin: 0 auto; }
+.main-row > * { flex: 1 1 400px; min-width: 0; }
+
+.calculator-card { overflow: hidden; background: #fff; border: 1px solid #dce2e5; border-radius: 22px; box-shadow: 0 18px 50px rgba(42, 58, 68, .1); }
+.calculator-card__header { display: flex; min-height: 74px; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 20px; border-bottom: 1px solid #edf0f2; }
+.drag-pill, .trace-toggle { display: inline-flex; align-items: center; gap: 7px; border-radius: 999px; background: #e8f7f4; color: #087568; font-size: .75rem; font-weight: 750; padding: 8px 11px; white-space: nowrap; }
+.trace-toggle { cursor: pointer; }
+.trace-toggle input { accent-color: #0f8a7b; margin: 0; }
+
+.graph-stage { position: relative; background: #fff; }
+.graph-canvas { display: block; width: 100%; height: auto; cursor: grab; touch-action: none; background-color: #fff; background-image: linear-gradient(rgba(122,135,146,.13) 1px, transparent 1px), linear-gradient(90deg, rgba(122,135,146,.13) 1px, transparent 1px), linear-gradient(rgba(122,135,146,.21) 1px, transparent 1px), linear-gradient(90deg, rgba(122,135,146,.21) 1px, transparent 1px); background-size: 6.25% 6.25%, 6.25% 6.25%, 31.25% 31.25%, 31.25% 31.25%; }
+.graph-canvas:active { cursor: grabbing; }
+.graph-stage__hint { position: absolute; right: 12px; bottom: 10px; margin: 0; border-radius: 999px; background: rgba(255,255,255,.85); color: #7b858d; font-size: .66rem; padding: 5px 8px; pointer-events: none; }
+
+.expression-sheet { position: relative; padding: 10px 20px 20px; border-top: 1px solid #e6eaec; background: #fff; }
+.sheet-handle { width: 42px; height: 5px; margin: 0 auto 11px; border-radius: 999px; background: #d5dadd; }
+.expression-sheet__heading { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; color: #69747c; font-size: .78rem; font-weight: 750; }
+.expression-sheet__heading button, .piece-editor__delete { border: 0; background: transparent; color: #087568; cursor: pointer; font: inherit; font-weight: 750; }
+
+.object-list { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; padding: 0; list-style: none; }
+.object-list li { display: inline-flex; align-items: center; }
+.object-list li > span { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 4px; }
+.object-list__visibility { border: 0; padding: 2px; background: transparent; color: #607078; cursor: pointer; font-size: .85rem; line-height: 1; }
+.object-list code { display: none; }
+.piece-editors { display: grid; gap: 8px; }
+.piece-editor { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; border-radius: 12px; padding: 8px 10px; background: #f8faf9; }
+.piece-editor__name { color: #0f8a7b; font-family: ui-monospace, Consolas, monospace; font-size: .9rem; font-weight: 800; }
+.piece-editor__equation { min-width: 0; }
+.piece-editor__equation .cm-editor { border: 0; background: transparent; font-size: 1rem; }
+.piece-editor__equation .cm-scroller { font-family: ui-monospace, Consolas, monospace; }
+.piece-editor__delete { color: #a24b4b; font-size: .75rem; }
+.domain-controls { grid-column: 2 / -1; color: #78838b; font-size: .72rem; }
+.domain-controls summary { cursor: pointer; }
+.domain-controls__fields { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; margin-top: 8px; }
+.domain-controls__fields label { display: grid; gap: 3px; }
+.domain-controls input[type='number'] { width: 65px; border: 1px solid #d7dfe1; border-radius: 6px; padding: 4px 6px; font: inherit; }
+.domain-controls .domain-check { display: flex; align-items: center; gap: 3px; padding-bottom: 4px; }
+.domain-check input { margin: 0; accent-color: #0f8a7b; }
+
+.parameter-sliders { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 12px; padding-top: 11px; border-top: 1px solid #edf0f2; }
+.parameter-sliders__label { color: #74808a; font-size: .75rem; font-weight: 750; }
+.parameter-slider { display: grid; grid-template-columns: auto 95px; align-items: center; gap: 7px; color: #44515b; font-size: .78rem; }
+.parameter-slider input { accent-color: #0f8a7b; }
+.expression-error { color: #b33a3a; font-size: .82rem; }
+
+.linked-function-panel { min-width: 0; }
+.expression-sheet--linked { min-height: 111px; }
+.linked-equation { display: flex; align-items: center; gap: 9px; color: #31414c; font-family: ui-monospace, Consolas, monospace; font-size: 1rem; }
+.linked-equation__dot { width: 13px; height: 13px; border-radius: 50%; background: #7758d7; box-shadow: 0 0 0 3px #eeeaff; }
+.linked-reading { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 14px; padding: 11px 12px; border-radius: 10px; background: #f2f5ff; color: #607086; font-size: .76rem; }
+.linked-reading strong { color: #403181; font-family: ui-monospace, Consolas, monospace; font-size: .95rem; }
+
+.link-bar { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px 14px; max-width: 1320px; margin: 18px auto 0; padding: 12px 16px; border: 1px solid #dce9e6; border-radius: 12px; background: #f4fbf9; color: #54706c; font-size: .82rem; }
+.link-bar strong, .link-bar b { color: #087568; }
+.link-bar__pulse { width: 8px; height: 8px; border-radius: 50%; background: #13a58e; box-shadow: 0 0 0 4px #d8f3ed; }
+.link-bar__message { color: #73807f; }
 
 @media (max-width: 768px) {
-  .main-row {
-    flex-direction: column;
-  }
-}
-
-.main-row > * {
-  flex: 1 1 400px;
-  min-width: 0;
+  .app-shell { padding: 14px; }
+  .app-header { align-items: start; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+  .app-header__note { text-align: left; }
+  .main-row { flex-direction: column; gap: 16px; }
+  .calculator-card { border-radius: 17px; }
+  .calculator-card__header { min-height: 62px; padding: 11px 14px; }
+  .expression-sheet { padding-inline: 14px; }
 }

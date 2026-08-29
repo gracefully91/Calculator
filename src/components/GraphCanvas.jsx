@@ -156,6 +156,7 @@ export function GraphCanvas({ curves, points, width = 400, height = 400, onCanva
   return (
     <canvas
       ref={canvasRef}
+      className="graph-canvas"
       width={width}
       height={height}
       // Task 17: let the canvas's *rendered* size follow its flex container

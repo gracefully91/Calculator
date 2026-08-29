@@ -165,17 +165,33 @@ export function Panel({
     typeof horizontalLineT === 'number' && onTChange ? { y: horizontalLineT, onDrag: onTChange } : undefined
 
   return (
-    <div>
-      <GraphCanvas curves={curves} points={points} horizontalLine={horizontalLine} />
+    <section className="calculator-card calculator-card--source" aria-labelledby="source-graph-title">
+      <header className="calculator-card__header">
+        <div>
+          <p className="calculator-card__eyebrow">원함수</p>
+          <h2 id="source-graph-title">f(x) 그래프</h2>
+        </div>
+        <span className="drag-pill">y = t 드래그</span>
+      </header>
+      <div className="graph-stage">
+        <GraphCanvas curves={curves} points={points} horizontalLine={horizontalLine} />
+        <p className="graph-stage__hint">휠로 확대 · 드래그로 이동</p>
+      </div>
+      <div className="expression-sheet">
+        <div className="sheet-handle" aria-hidden="true" />
+        <div className="expression-sheet__heading">
+          <span>함수 목록</span>
+          <button type="button" aria-label="add piece" onClick={addPiece}>
+            <span aria-hidden="true">＋</span> 함수 추가
+          </button>
+        </div>
       <ObjectList
         pieces={pieces}
         isVisible={isVisible}
         onToggle={toggleVisibility}
         colors={OBJECT_LIST_COLORS}
       />
-      <button type="button" aria-label="add piece" onClick={addPiece}>
-        조각 추가
-      </button>
+      <div className="piece-editors">
       {pieces.map((piece, i) => {
         const [min, max] = piece.domain
         return (
@@ -186,57 +202,49 @@ export function Panel({
           // selection, scroll, undo history) that lives outside the
           // controlled `value` prop. Fall back to index only for pieces
           // built before `id` existed (e.g. older test fixtures).
-          <div key={piece.id ?? i} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-            <EquationInput
-              label={`piece expression ${i + 1}`}
-              value={piece.expr}
-              onChange={(expr) => updatePiece(i, { expr })}
-              error={null}
-            />
-            <input
-              type="number"
-              aria-label={`domain min ${i + 1}`}
-              value={min ?? ''}
-              placeholder="-inf"
-              onChange={(e) => updateDomain(i, 0, e.target.value)}
-            />
-            <label>
-              <input
-                type="checkbox"
-                aria-label={`closed at min ${i + 1}`}
-                disabled={min === null}
-                checked={min !== null && piece.closedAt?.left !== false}
-                onChange={(e) => updatePiece(i, { closedAt: { ...piece.closedAt, left: e.target.checked } })}
+          <div key={piece.id ?? i} className="piece-editor">
+            <span className="piece-editor__name">f{i + 1}</span>
+            <div className="piece-editor__equation">
+              <EquationInput
+                label={`piece expression ${i + 1}`}
+                value={piece.expr}
+                onChange={(expr) => updatePiece(i, { expr })}
+                error={null}
               />
-              닫힘(≤)
-            </label>
-            <input
-              type="number"
-              aria-label={`domain max ${i + 1}`}
-              value={max ?? ''}
-              placeholder="+inf"
-              onChange={(e) => updateDomain(i, 1, e.target.value)}
-            />
-            <label>
-              <input
-                type="checkbox"
-                aria-label={`closed at max ${i + 1}`}
-                disabled={max === null}
-                checked={max !== null && piece.closedAt?.right !== false}
-                onChange={(e) => updatePiece(i, { closedAt: { ...piece.closedAt, right: e.target.checked } })}
-              />
-              닫힘(≤)
-            </label>
+            </div>
             {pieces.length > 1 && (
-              <button type="button" onClick={() => removePiece(i)}>
+              <button className="piece-editor__delete" type="button" onClick={() => removePiece(i)}>
                 삭제
               </button>
             )}
+            <details className="domain-controls">
+              <summary>구간 설정</summary>
+              <div className="domain-controls__fields">
+                <label>
+                  시작
+                  <input type="number" aria-label={`domain min ${i + 1}`} value={min ?? ''} placeholder="−∞" onChange={(e) => updateDomain(i, 0, e.target.value)} />
+                </label>
+                <label className="domain-check">
+                  <input type="checkbox" aria-label={`closed at min ${i + 1}`} disabled={min === null} checked={min !== null && piece.closedAt?.left !== false} onChange={(e) => updatePiece(i, { closedAt: { ...piece.closedAt, left: e.target.checked } })} />
+                  포함
+                </label>
+                <label>
+                  끝
+                  <input type="number" aria-label={`domain max ${i + 1}`} value={max ?? ''} placeholder="+∞" onChange={(e) => updateDomain(i, 1, e.target.value)} />
+                </label>
+                <label className="domain-check">
+                  <input type="checkbox" aria-label={`closed at max ${i + 1}`} disabled={max === null} checked={max !== null && piece.closedAt?.right !== false} onChange={(e) => updatePiece(i, { closedAt: { ...piece.closedAt, right: e.target.checked } })} />
+                  포함
+                </label>
+              </div>
+            </details>
           </div>
         )
       })}
+      </div>
       {freeVars.length > 0 && <ParamSliders names={freeVars} values={params} onChange={onParamChange} />}
-      {error && <div style={{ color: '#dc2626' }}>{error}</div>}
-    </div>
+      {error && <div className="expression-error">{error}</div>}
+      </div>
+    </section>
   )
 }

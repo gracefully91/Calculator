@@ -21,8 +21,8 @@ export function drawCurve(ctx, view, fn, range, samples = 300) {
 
   const step = (range.xMax - range.xMin) / samples
   ctx.save()
-  ctx.strokeStyle = '#2563eb'
-  ctx.lineWidth = 2
+  ctx.strokeStyle = '#0f8a7b'
+  ctx.lineWidth = 2.8
   ctx.beginPath()
 
   let penDown = false
@@ -51,7 +51,7 @@ export function drawCurve(ctx, view, fn, range, samples = 300) {
   ctx.restore()
 }
 
-export function drawPointMarker(ctx, view, x, y, { closed, color = '#2563eb', radius = 5 } = {}) {
+export function drawPointMarker(ctx, view, x, y, { closed, color = '#0f8a7b', radius = 5 } = {}) {
   const { x: sx, y: sy } = worldToScreen(view, x, y)
   ctx.save()
   ctx.beginPath()
