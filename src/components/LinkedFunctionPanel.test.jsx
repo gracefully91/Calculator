@@ -60,6 +60,16 @@ describe('LinkedFunctionPanel', () => {
     expect(onToggleVisible).toHaveBeenCalledOnce()
   })
 
+  it('shows the right graph preset picker directly in its object row', async () => {
+    const onModeChange = vi.fn()
+    render(<LinkedFunctionPanel pieces={pieces} params={{}} t={0} onModeChange={onModeChange} />)
+
+    await userEvent.selectOptions(screen.getByLabelText('right graph mode'), RIGHT_GRAPH_MODES.DERIVATIVE)
+
+    expect(onModeChange).toHaveBeenCalledWith(RIGHT_GRAPH_MODES.DERIVATIVE)
+    expect(screen.queryByLabelText('right graph menu')).not.toBeInTheDocument()
+  })
+
   it('shows a right-side MathLive expression only in custom-function mode', () => {
     render(
       <LinkedFunctionPanel

@@ -3,7 +3,6 @@ import { useAppStore } from './state/store'
 import { Panel } from './components/Panel'
 import { LinkBar } from './components/LinkBar'
 import { LinkedFunctionPanel } from './components/LinkedFunctionPanel'
-import { MathKeyboardToggle } from './components/MathKeyboardToggle'
 
 // The right-hand panel (LinkedFunctionPanel, Task 15) reads the exact same
 // leftPieces/params as the left Panel -- it isn't a second, independently
@@ -72,7 +71,6 @@ export default function App() {
         </section>
       </div>
       <LinkBar t={t} />
-      <MathKeyboardToggle />
     </main>
   )
 }

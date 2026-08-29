@@ -59,6 +59,11 @@
 .equation-input { display: block; box-sizing: border-box; width: 100%; min-height: 2.4rem; border: 0; border-bottom: 1px solid #dfe5e7; border-radius: 0; padding: .35rem .15rem; background: transparent; color: #1d252a; font-size: 1.08rem; }
 .equation-input:focus { outline: 2px solid rgba(15,138,123,.24); outline-offset: 2px; border-radius: 6px; }
 .equation-input--test { font-family: ui-monospace, Consolas, monospace; }
+/* MathLive exports these shadow parts specifically for host-page styling.
+   There is one app-level keyboard button in the function-list heading, so
+   repeat controls must not consume each equation row. */
+math-field.equation-input::part(virtual-keyboard-toggle),
+math-field.equation-input::part(menu-toggle) { display: none; }
 .piece-editor__menu { position: relative; }
 .piece-editor__menu summary { list-style: none; color: #64748b; cursor: pointer; font-size: 1.15rem; line-height: 1; }
 .piece-editor__menu summary::-webkit-details-marker { display: none; }
@@ -91,7 +96,7 @@
 .right-graph-mode select { min-width: 0; border: 1px solid #d7dfe1; border-radius: 7px; padding: 5px 7px; background: #fff; color: #35434c; font: inherit; }
 .right-object-row { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; align-items: center; gap: 9px; margin-bottom: 10px; padding: 8px 10px; border-radius: 12px; background: #f8faf9; }
 .right-object-row__label { min-width: 0; color: #45545d; font-size: .82rem; }
-.right-object-row .piece-editor__menu[open] select { position: absolute; z-index: 9; top: 26px; right: 0; min-width: 180px; border: 1px solid #d7dfe1; border-radius: 7px; padding: 6px; background: #fff; font: inherit; }
+.right-object-row__select { min-width: 126px; border: 1px solid #d7dfe1; border-radius: 7px; padding: 6px 7px; background: #fff; color: #35434c; font: inherit; font-size: .75rem; }
 .linked-equation { display: flex; align-items: center; gap: 9px; color: #31414c; font-family: ui-monospace, Consolas, monospace; font-size: 1rem; }
 .linked-equation__dot { width: 13px; height: 13px; border-radius: 50%; background: #7758d7; box-shadow: 0 0 0 3px #eeeaff; }
 .linked-reading { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 14px; padding: 11px 12px; border-radius: 10px; background: #f2f5ff; color: #607086; font-size: .76rem; }
@@ -99,7 +104,7 @@
 
 .link-bar { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px 14px; max-width: 1320px; margin: 18px auto 0; padding: 12px 16px; border: 1px solid #dce9e6; border-radius: 12px; background: #f4fbf9; color: #54706c; font-size: .82rem; }
 .link-bar strong, .link-bar b { color: #087568; }
-.math-keyboard-toggle { position: fixed; z-index: 20; right: 20px; bottom: 20px; border: 0; border-radius: 999px; padding: 10px 13px; background: #1d4f5b; color: #fff; box-shadow: 0 8px 22px rgba(29,79,91,.25); cursor: pointer; font: inherit; font-size: .78rem; font-weight: 750; }
+.math-keyboard-toggle { border: 1px solid #cfe2df; border-radius: 7px; padding: 5px 7px; background: #fff; color: #087568; cursor: pointer; font: inherit; font-size: .7rem; font-weight: 750; }
 .link-bar__pulse { width: 8px; height: 8px; border-radius: 50%; background: #13a58e; box-shadow: 0 0 0 4px #d8f3ed; }
 .link-bar__message { color: #73807f; }
 
@@ -122,5 +127,4 @@
   .source-panel__editor .sheet-handle { display: none; }
   .source-panel__graph .graph-canvas-host { aspect-ratio: 4 / 3; }
   .source-panel__graph .jsxgraph-board { min-height: 230px; }
-  .math-keyboard-toggle { right: 14px; bottom: 14px; }
 }

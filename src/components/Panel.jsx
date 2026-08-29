@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { GraphCanvas } from './GraphCanvas'
 import { EquationInput } from './EquationInput'
+import { MathKeyboardToggle } from './MathKeyboardToggle'
 import { ParamSliders } from './ParamSliders'
 import { usePiecewiseFunction } from '../hooks/usePiecewiseFunction'
 
@@ -186,6 +187,7 @@ export function Panel({
         <div className="sheet-handle" aria-hidden="true" />
         <div className="expression-sheet__heading">
           <span>함수 목록</span>
+          <MathKeyboardToggle />
         </div>
       <div className="piece-editors">
       {pieces.map((piece, i) => {

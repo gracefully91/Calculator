@@ -41,6 +41,8 @@ export function EquationInput({ value, onChange, error, label }) {
     )
   }
 
+  // The app exposes one shared keyboard control in the function-list heading;
+  // the field's own keyboard/menu buttons are hidden via exported shadow parts.
   return (
     <div>
       <math-field

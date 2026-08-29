@@ -105,12 +105,9 @@ export function LinkedFunctionPanel({
           {isCustom
             ? <EquationInput label="right graph expression" value={expression} onChange={onExpressionChange} error={null} />
             : <span className="right-object-row__label">{RIGHT_GRAPH_MODE_LABELS[mode]}</span>}
-          <details className="piece-editor__menu">
-            <summary aria-label="right graph menu">⋮</summary>
-            <select aria-label="right graph mode" value={mode} onChange={(event) => onModeChange(event.target.value)}>
-              {Object.entries(RIGHT_GRAPH_MODE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-            </select>
-          </details>
+          <select className="right-object-row__select" aria-label="right graph mode" value={mode} onChange={(event) => onModeChange(event.target.value)}>
+            {Object.entries(RIGHT_GRAPH_MODE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </select>
         </div>
         {isCustom ? <>
           {customFreeVars.length > 0 && <ParamSliders names={customFreeVars} values={params} onChange={onParamChange} />}
