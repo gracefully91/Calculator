@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState } from 'react'
 import JXG from 'jsxgraph'
 import { InkLayer } from './InkLayer'
+import { SketchLayer } from './SketchLayer'
 import { drawAxes, drawCurve, drawPointMarker } from '../core/canvasRenderer'
 import { worldToScreen, screenToWorld, resolveRenderedSize } from '../core/viewport'
 
@@ -25,7 +26,7 @@ const LINE_HIT_THRESHOLD_PX = 8
 //   y=horizontalLine.y 위치에 드래그 가능한 빨간 점선을 그린다. 이 선 근처(8px 이내)에서
 //   mousedown하면 팬 대신 onDrag가 호출된다 (팬과 달리 GraphCanvas의 로컬 worldView는
 //   바뀌지 않고, 부모가 준 콜백을 통해 t 같은 외부 상태를 갱신하는 용도).
-export function GraphCanvas({ curves, points, width = 400, height = 400, onCanvasClick, horizontalLine, inkStrokes, onInkStrokesChange, inkLabel, resetViewToken }) {
+export function GraphCanvas({ curves, points, width = 400, height = 400, onCanvasClick, horizontalLine, inkStrokes, onInkStrokesChange, inkLabel, resetViewToken, sketchActive = false, sketchStrokes, onSketchStrokesChange }) {
   const canvasRef = useRef(null)
   const boardElementRef = useRef(null)
   const boardInstanceRef = useRef(null)
@@ -34,6 +35,7 @@ export function GraphCanvas({ curves, points, width = 400, height = 400, onCanva
   const [boardReady, setBoardReady] = useState(false)
   const [worldView, setWorldView] = useState(DEFAULT_VIEW)
   const [viewBounds, setViewBounds] = useState(DEFAULT_VIEW)
+  const [boardViewport, setBoardViewport] = useState(DEFAULT_VIEW)
   // Drag state must survive re-renders (setWorldView during a drag causes
   // one), so a plain `let` in the component body would be reset to null on
   // every re-render and break the drag after its first mousemove. A ref's
@@ -73,6 +75,12 @@ export function GraphCanvas({ curves, points, width = 400, height = 400, onCanva
         zoom: { wheel: true, pinch: true, needShift: false },
       })
       boardInstanceRef.current = board
+      const syncBoardViewport = () => {
+        const [xMin, yMax, xMax, yMin] = board.getBoundingBox()
+        setBoardViewport({ xMin, xMax, yMin, yMax })
+      }
+      syncBoardViewport()
+      board.on('move', syncBoardViewport)
       setBoardReady(true)
     } catch {
       // A failed board init should never prevent the worksheet from opening:
@@ -105,6 +113,7 @@ export function GraphCanvas({ curves, points, width = 400, height = 400, onCanva
     previousResetViewTokenRef.current = resetViewToken
     setWorldView({ ...DEFAULT_VIEW })
     setViewBounds({ ...DEFAULT_VIEW })
+    setBoardViewport({ ...DEFAULT_VIEW })
   }, [resetViewToken])
 
   useEffect(() => {
@@ -319,6 +328,7 @@ export function GraphCanvas({ curves, points, width = 400, height = 400, onCanva
         onMouseLeave={handleMouseUp}
         onClick={(e) => onCanvasClick?.(e, view)}
       />
+      <SketchLayer active={sketchActive} strokes={sketchStrokes} onStrokesChange={onSketchStrokesChange} view={boardReady ? boardViewport : worldView} label={inkLabel} />
       <InkLayer strokes={inkStrokes} onStrokesChange={onInkStrokesChange} label={inkLabel} />
       <details className="view-controls">
         <summary>보기 범위</summary>

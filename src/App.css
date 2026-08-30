@@ -15,6 +15,8 @@
 .calculator-card__actions { display: inline-flex; align-items: center; gap: 8px; }
 .view-reset { display: inline-grid; width: 31px; height: 31px; place-items: center; border: 1px solid #d8e2e4; border-radius: 50%; background: #fff; color: #087568; cursor: pointer; font-size: 1.2rem; line-height: 1; }
 .view-reset:hover { background: #e8f7f4; }
+.sketch-toggle { border: 1px solid #fed7aa; border-radius: 999px; padding: 7px 9px; background: #fff7ed; color: #c2410c; cursor: pointer; font: inherit; font-size: .72rem; font-weight: 750; white-space: nowrap; }
+.sketch-toggle[aria-pressed='true'] { background: #f97316; color: #fff; }
 .source-panel__editor { margin: 0; }
 .source-panel__editor > summary { display: none; }
 .drag-pill, .trace-toggle { display: inline-flex; align-items: center; gap: 7px; border-radius: 999px; background: #e8f7f4; color: #087568; font-size: .75rem; font-weight: 750; padding: 8px 11px; white-space: nowrap; }
@@ -32,6 +34,11 @@
 .ink-toolbar button { border: 0; border-radius: 6px; padding: 5px 7px; background: transparent; color: #596770; font-size: .67rem; font-weight: 750; cursor: pointer; }
 .ink-toolbar button[aria-pressed='true'] { background: #ede9fe; color: #6d28d9; }
 .ink-toolbar button:disabled { opacity: .42; cursor: default; }
+.sketch-layer { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+.sketch-layer--active { pointer-events: auto; }
+.sketch-layer__canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; touch-action: none; }
+.sketch-layer--active .sketch-layer__canvas { pointer-events: auto; cursor: crosshair; }
+.sketch-layer__hint { position: absolute; top: 11px; left: 11px; margin: 0; border-radius: 999px; padding: 5px 8px; background: rgba(255,247,237,.95); color: #c2410c; font-size: .68rem; font-weight: 750; pointer-events: none; }
 .view-controls { position: absolute; left: 10px; bottom: 10px; z-index: 4; max-width: calc(100% - 20px); border: 1px solid rgba(212,218,224,.9); border-radius: 9px; background: rgba(255,255,255,.92); color: #596770; font-size: .68rem; pointer-events: auto; }
 .view-controls summary { cursor: pointer; padding: 6px 8px; font-weight: 750; }
 .view-controls__fields { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; padding: 0 8px 8px; }
@@ -92,6 +99,18 @@ math-field.equation-input::part(menu-toggle) { display: none; }
 .parameter-slider { display: grid; grid-template-columns: auto 95px; align-items: center; gap: 7px; color: #44515b; font-size: .78rem; }
 .parameter-slider input { accent-color: #0f8a7b; }
 .expression-error { color: #b33a3a; font-size: .82rem; }
+.sketch-assistant { margin-top: 12px; border-top: 1px solid #f0e2d5; color: #6b7280; font-size: .76rem; }
+.sketch-assistant summary { display: flex; justify-content: space-between; gap: 8px; padding: 10px 2px; color: #9a4d16; cursor: pointer; font-weight: 800; }
+.sketch-assistant summary span { color: #8b95a0; font-weight: 650; }
+.sketch-assistant__body { display: grid; gap: 9px; padding: 0 2px 11px; }
+.sketch-assistant__body p { margin: 0; }
+.sketch-assistant__actions { display: flex; flex-wrap: wrap; gap: 7px; }
+.sketch-assistant__actions button, .sketch-assistant__preview button { border: 1px solid #fed7aa; border-radius: 7px; padding: 6px 8px; background: #fff7ed; color: #c2410c; cursor: pointer; font: inherit; font-weight: 750; }
+.sketch-assistant__status { color: #087568; }
+.sketch-assistant label { display: grid; gap: 4px; font-weight: 750; }
+.sketch-assistant textarea { min-height: 82px; resize: vertical; border: 1px solid #dce2e5; border-radius: 8px; padding: 8px; font: .76rem ui-monospace, Consolas, monospace; }
+.sketch-assistant__preview { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 8px; border-radius: 8px; background: #ecfdf5; color: #087568; }
+.sketch-assistant__preview code { color: #174a43; }
 
 .linked-function-panel { min-width: 0; }
 .expression-sheet--linked { min-height: 111px; }
@@ -126,6 +145,8 @@ math-field.equation-input::part(menu-toggle) { display: none; }
   .source-panel__editor > summary span:last-child { margin-left: auto; color: #78848c; font-size: .72rem; font-weight: 700; }
   .source-panel__editor .expression-sheet { border-top: 1px solid #e6eaec; }
   .calculator-card__header { min-height: 62px; padding: 11px 14px; }
+  .calculator-card__actions { gap: 5px; }
+  .sketch-toggle { padding: 6px 7px; font-size: .68rem; }
   .expression-sheet { padding-inline: 14px; }
   .source-panel__editor .sheet-handle { display: none; }
   .source-panel__graph .graph-canvas-host { aspect-ratio: 4 / 3; }

@@ -3,6 +3,7 @@ import { GraphCanvas } from './GraphCanvas'
 import { EquationInput } from './EquationInput'
 import { MathKeyboardToggle } from './MathKeyboardToggle'
 import { ParamSliders } from './ParamSliders'
+import { SketchAssistant } from './SketchAssistant'
 import { usePiecewiseFunction } from '../hooks/usePiecewiseFunction'
 
 // A brand-new piece starts fully unbounded (domain: [null, null]) -- there is
@@ -60,6 +61,8 @@ export function Panel({
   // state, not part of the piecewise function's data model.
   const [hiddenIds, setHiddenIds] = useState(() => new Set())
   const [resetViewToken, setResetViewToken] = useState(0)
+  const [sketchActive, setSketchActive] = useState(false)
+  const [sketchStrokes, setSketchStrokes] = useState([])
   const isVisible = (id) => !hiddenIds.has(id)
   function toggleVisibility(id) {
     setHiddenIds((prev) => {
@@ -177,11 +180,12 @@ export function Panel({
           </div>
           <div className="calculator-card__actions">
             <button className="view-reset" type="button" aria-label="reset source graph view" title="보기 초기화" onClick={() => setResetViewToken((token) => token + 1)}>↻</button>
+            <button className="sketch-toggle" type="button" aria-pressed={sketchActive} onClick={() => setSketchActive((active) => !active)}>{sketchActive ? '스케치 완료' : '함수 스케치'}</button>
             <span className="drag-pill">y = t 드래그</span>
           </div>
         </header>
         <div className="graph-stage">
-          <GraphCanvas curves={curves} points={points} horizontalLine={horizontalLine} inkStrokes={inkStrokes} onInkStrokesChange={onInkStrokesChange} inkLabel="source graph" resetViewToken={resetViewToken} />
+          <GraphCanvas curves={curves} points={points} horizontalLine={horizontalLine} inkStrokes={inkStrokes} onInkStrokesChange={onInkStrokesChange} inkLabel="source graph" resetViewToken={resetViewToken} sketchActive={sketchActive} sketchStrokes={sketchStrokes} onSketchStrokesChange={setSketchStrokes} />
           <p className="graph-stage__hint">휠로 확대 · 드래그로 이동</p>
         </div>
       </div>
@@ -252,6 +256,7 @@ export function Panel({
       <button className="piece-editor__add" type="button" aria-label="add piece" onClick={addPiece}><span aria-hidden="true">＋</span> 입력...</button>
       </div>
       {freeVars.length > 0 && <ParamSliders names={freeVars} values={params} onChange={onParamChange} />}
+      <SketchAssistant strokes={sketchStrokes} onClear={() => setSketchStrokes([])} onApply={(nextPieces) => { onPiecesChange(nextPieces.map((piece, index) => ({ ...piece, id: index + 1 }))); setSketchStrokes([]); setSketchActive(false) }} />
       {error && <div className="expression-error">{error}</div>}
         </div>
       </details>
