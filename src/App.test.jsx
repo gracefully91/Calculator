@@ -38,6 +38,21 @@ describe('App — full two-panel layout (Task 15)', () => {
     expect(screen.getByText(/현재 t = 0\.00/)).toBeInTheDocument()
     // Default left piece is `x` over (-inf, inf): y=x=0 crosses y=t=0 once.
     expect(screen.getByText(/h\(0\.00\)\s*=\s*1/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'reset source graph view' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'reset linked graph view' })).toBeInTheDocument()
+  })
+
+  it('resets the right graph view independently from the source graph view', () => {
+    render(<App />)
+    const viewSummaries = screen.getAllByText('보기 범위')
+    fireEvent.click(viewSummaries[1])
+    const xMin = screen.getByLabelText('linked graph view x min')
+    fireEvent.change(xMin, { target: { value: '-3' } })
+    expect(xMin).toHaveValue(-3)
+
+    fireEvent.click(screen.getByRole('button', { name: 'reset linked graph view' }))
+    expect(screen.getByLabelText('linked graph view x min')).toHaveValue(-8)
+    expect(screen.getByLabelText('source graph view x min')).toHaveValue(-8)
   })
 
   it('dragging the left y=t line updates the store t, LinkBar, and the right panel h(t) reading together', () => {

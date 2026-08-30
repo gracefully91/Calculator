@@ -27,6 +27,7 @@ export function LinkedFunctionPanel({
   onExpressionChange = () => {},
   visible = true,
   onToggleVisible = () => {},
+  resetViewToken,
 }) {
   const { fn, error: sourceError } = usePiecewiseFunction(pieces, params)
   const isIntersectionCount = mode === RIGHT_GRAPH_MODES.INTERSECTION_COUNT
@@ -94,7 +95,7 @@ export function LinkedFunctionPanel({
   return (
     <div className="linked-function-panel">
       <div className="graph-stage">
-        <GraphCanvas curves={visible ? curves : []} points={visible ? points : []} inkStrokes={inkStrokes} onInkStrokesChange={onInkStrokesChange} inkLabel="linked graph" />
+        <GraphCanvas curves={visible ? curves : []} points={visible ? points : []} inkStrokes={inkStrokes} onInkStrokesChange={onInkStrokesChange} inkLabel="linked graph" resetViewToken={resetViewToken} />
         <p className="graph-stage__hint">{hint}</p>
       </div>
       <div className="expression-sheet expression-sheet--linked">

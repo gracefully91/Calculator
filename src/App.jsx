@@ -1,4 +1,5 @@
 import './App.css'
+import { useState } from 'react'
 import { useAppStore } from './state/store'
 import { Panel } from './components/Panel'
 import { LinkBar } from './components/LinkBar'
@@ -12,6 +13,7 @@ import { LinkedFunctionPanel } from './components/LinkedFunctionPanel'
 // the store (App.jsx owns no local state of its own), matching Task 14's
 // established prop-drilling pattern.
 export default function App() {
+  const [rightResetViewToken, setRightResetViewToken] = useState(0)
   const t = useAppStore((s) => s.t)
   const setT = useAppStore((s) => s.setT)
   const leftPieces = useAppStore((s) => s.leftPieces)
@@ -62,12 +64,15 @@ export default function App() {
               <p className="calculator-card__eyebrow">연동 결과</p>
           <h2 id="linked-graph-title">{rightGraphTitle}</h2>
         </div>
-            {rightGraphMode === 'intersection-count' && <label className="trace-toggle">
-              <input type="checkbox" checked={traceOn} onChange={toggleTrace} />
-              <span>Trace On</span>
-            </label>}
+            <div className="calculator-card__actions">
+              <button className="view-reset" type="button" aria-label="reset linked graph view" title="보기 초기화" onClick={() => setRightResetViewToken((token) => token + 1)}>↻</button>
+              {rightGraphMode === 'intersection-count' && <label className="trace-toggle">
+                <input type="checkbox" checked={traceOn} onChange={toggleTrace} />
+                <span>Trace On</span>
+              </label>}
+            </div>
           </header>
-          <LinkedFunctionPanel pieces={leftPieces} params={params} onParamChange={setParam} t={t} traceOn={traceOn} inkStrokes={rightInkStrokes} onInkStrokesChange={setRightInkStrokes} mode={rightGraphMode} onModeChange={setRightGraphMode} expression={rightGraphExpression} onExpressionChange={setRightGraphExpression} visible={rightGraphVisible} onToggleVisible={toggleRightGraphVisible} />
+          <LinkedFunctionPanel pieces={leftPieces} params={params} onParamChange={setParam} t={t} traceOn={traceOn} inkStrokes={rightInkStrokes} onInkStrokesChange={setRightInkStrokes} mode={rightGraphMode} onModeChange={setRightGraphMode} expression={rightGraphExpression} onExpressionChange={setRightGraphExpression} visible={rightGraphVisible} onToggleVisible={toggleRightGraphVisible} resetViewToken={rightResetViewToken} />
         </section>
       </div>
       <LinkBar t={t} />
