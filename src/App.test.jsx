@@ -42,6 +42,21 @@ describe('App — full two-panel layout (Task 15)', () => {
     expect(screen.getByRole('button', { name: 'reset linked graph view' })).toBeInTheDocument()
   })
 
+  it('applies a pasted browser-LLM problem analysis to both graph panels', async () => {
+    render(<App />)
+    fireEvent.click(screen.getByText('LLM 문제 분석 가져오기'))
+    fireEvent.change(screen.getByLabelText('LLM problem analysis response'), {
+      target: { value: '{"left":{"pieces":[{"expr":"a*x^2","domain":[-2,2],"closedAt":{}}]},"right":{"mode":"custom","expression":"x+1"},"parameters":{"a":3},"t":2}' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: '그래프에 적용' }))
+
+    expect(useAppStore.getState().leftPieces[0]).toMatchObject({ id: 1, expr: 'a*x^2', domain: [-2, 2] })
+    expect(useAppStore.getState().rightGraphMode).toBe('custom')
+    expect(useAppStore.getState().rightGraphExpression).toBe('x+1')
+    expect(useAppStore.getState().params).toEqual({ a: 3 })
+    expect(useAppStore.getState().t).toBe(2)
+  })
+
   it('resets the right graph view independently from the source graph view', () => {
     render(<App />)
     const viewSummaries = screen.getAllByText('보기 범위')

@@ -21,6 +21,12 @@ describe('useAppStore', () => {
     expect(useAppStore.getState().params).toEqual({ a: 3, b: 6 })
   })
 
+  it('setParams replaces imported parameters as one analysis result', () => {
+    useAppStore.getState().setParam('old', 9)
+    useAppStore.getState().setParams({ a: 3, b: 6 })
+    expect(useAppStore.getState().params).toEqual({ a: 3, b: 6 })
+  })
+
   it('setLeftFunctionSource stores the raw editor text separately from the parsed def', () => {
     useAppStore.getState().setLeftFunctionSource('x^2')
     expect(useAppStore.getState().leftFunctionSource).toBe('x^2')

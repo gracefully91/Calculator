@@ -54,6 +54,7 @@ export const useAppStore = create((set) => ({
 
   setT: (t) => set({ t }),
   setParam: (name, value) => set((s) => ({ params: { ...s.params, [name]: value } })),
+  setParams: (params) => set({ params }),
   setLeftFunctionSource: (source) => set({ leftFunctionSource: source }),
   setLeftPieces: (pieces) => set({ leftPieces: pieces }),
   setLeftInkStrokes: (strokes) => set({ leftInkStrokes: strokes }),

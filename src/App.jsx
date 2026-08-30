@@ -4,6 +4,7 @@ import { useAppStore } from './state/store'
 import { Panel } from './components/Panel'
 import { LinkBar } from './components/LinkBar'
 import { LinkedFunctionPanel } from './components/LinkedFunctionPanel'
+import { ProblemImportAssistant } from './components/ProblemImportAssistant'
 
 // The right-hand panel (LinkedFunctionPanel, Task 15) reads the exact same
 // leftPieces/params as the left Panel -- it isn't a second, independently
@@ -20,6 +21,7 @@ export default function App() {
   const setLeftPieces = useAppStore((s) => s.setLeftPieces)
   const params = useAppStore((s) => s.params)
   const setParam = useAppStore((s) => s.setParam)
+  const setParams = useAppStore((s) => s.setParams)
   const traceOn = useAppStore((s) => s.traceOn)
   const toggleTrace = useAppStore((s) => s.toggleTrace)
   const leftInkStrokes = useAppStore((s) => s.leftInkStrokes)
@@ -47,6 +49,13 @@ export default function App() {
         </div>
         <p className="app-header__note">왼쪽에서 함수를 만들고, <strong>y = t</strong> 선을 드래그해 보세요.</p>
       </header>
+      <ProblemImportAssistant onApply={(analysis) => {
+        setLeftPieces(analysis.pieces.map((piece, index) => ({ ...piece, id: index + 1 })))
+        setRightGraphMode(analysis.rightMode)
+        setRightGraphExpression(analysis.rightExpression)
+        setParams(analysis.params)
+        setT(analysis.t)
+      }} />
       <div className="main-row">
         <Panel
           pieces={leftPieces}

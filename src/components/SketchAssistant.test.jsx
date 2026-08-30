@@ -6,6 +6,17 @@ import { SketchAssistant } from './SketchAssistant'
 const strokes = [{ points: [{ x: -2, y: 4 }, { x: 0, y: 0 }, { x: 2, y: 4 }] }]
 
 describe('SketchAssistant', () => {
+  it('offers a local polynomial correction without requiring any LLM', async () => {
+    const onApply = vi.fn()
+    render(<SketchAssistant strokes={strokes} onClear={vi.fn()} onApply={onApply} />)
+
+    await userEvent.click(screen.getByRole('button', { name: '자동 보정 식 적용' }))
+
+    expect(onApply).toHaveBeenCalledWith([
+      expect.objectContaining({ expr: expect.stringContaining('x^2'), domain: [-2, 2] }),
+    ])
+  })
+
   it('only offers application after a pasted LLM response passes math validation', async () => {
     const onApply = vi.fn()
     render(<SketchAssistant strokes={strokes} onClear={vi.fn()} onApply={onApply} />)
