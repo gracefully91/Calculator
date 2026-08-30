@@ -59,6 +59,7 @@ export function Panel({
   // own note ("Panel에 visibility state를 추가") -- this is view-local display
   // state, not part of the piecewise function's data model.
   const [hiddenIds, setHiddenIds] = useState(() => new Set())
+  const [resetViewToken, setResetViewToken] = useState(0)
   const isVisible = (id) => !hiddenIds.has(id)
   function toggleVisibility(id) {
     setHiddenIds((prev) => {
@@ -174,10 +175,13 @@ export function Panel({
             <p className="calculator-card__eyebrow">원함수</p>
             <h2 id="source-graph-title">f(x) 그래프</h2>
           </div>
-          <span className="drag-pill">y = t 드래그</span>
+          <div className="calculator-card__actions">
+            <button className="view-reset" type="button" aria-label="reset source graph view" title="보기 초기화" onClick={() => setResetViewToken((token) => token + 1)}>↻</button>
+            <span className="drag-pill">y = t 드래그</span>
+          </div>
         </header>
         <div className="graph-stage">
-          <GraphCanvas curves={curves} points={points} horizontalLine={horizontalLine} inkStrokes={inkStrokes} onInkStrokesChange={onInkStrokesChange} inkLabel="source graph" />
+          <GraphCanvas curves={curves} points={points} horizontalLine={horizontalLine} inkStrokes={inkStrokes} onInkStrokesChange={onInkStrokesChange} inkLabel="source graph" resetViewToken={resetViewToken} />
           <p className="graph-stage__hint">휠로 확대 · 드래그로 이동</p>
         </div>
       </div>

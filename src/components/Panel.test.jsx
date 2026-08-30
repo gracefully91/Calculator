@@ -37,6 +37,24 @@ describe('Panel — piecewise editing', () => {
     expect(screen.getByText('함수 편집')).toBeInTheDocument()
   })
 
+  it('resets only the source graph viewport from its header button', () => {
+    render(<Panel pieces={[{ expr: 'x', domain: [null, null], closedAt: {} }]} onPiecesChange={vi.fn()} params={{}} />)
+
+    fireEvent.click(screen.getByText('보기 범위'))
+    const xMin = screen.getByLabelText('source graph view x min')
+    const yMax = screen.getByLabelText('source graph view y max')
+    fireEvent.change(xMin, { target: { value: '-2' } })
+    fireEvent.change(yMax, { target: { value: '3' } })
+    expect(xMin).toHaveValue(-2)
+    expect(yMax).toHaveValue(3)
+
+    fireEvent.click(screen.getByRole('button', { name: 'reset source graph view' }))
+    expect(screen.getByLabelText('source graph view x min')).toHaveValue(-8)
+    expect(screen.getByLabelText('source graph view y max')).toHaveValue(8)
+    // The reset is intentionally not a data reset.
+    expect(screen.getByLabelText('piece expression 1')).toHaveValue('x')
+  })
+
   it('starts with one piece row and can add another', async () => {
     render(<Panel pieces={[{ expr: 'x', domain: [null, null], closedAt: {} }]} onPiecesChange={vi.fn()} params={{}} />)
     expect(screen.getAllByLabelText(/piece expression/i)).toHaveLength(1)

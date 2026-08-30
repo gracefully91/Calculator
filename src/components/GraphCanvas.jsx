@@ -25,11 +25,12 @@ const LINE_HIT_THRESHOLD_PX = 8
 //   y=horizontalLine.y 위치에 드래그 가능한 빨간 점선을 그린다. 이 선 근처(8px 이내)에서
 //   mousedown하면 팬 대신 onDrag가 호출된다 (팬과 달리 GraphCanvas의 로컬 worldView는
 //   바뀌지 않고, 부모가 준 콜백을 통해 t 같은 외부 상태를 갱신하는 용도).
-export function GraphCanvas({ curves, points, width = 400, height = 400, onCanvasClick, horizontalLine, inkStrokes, onInkStrokesChange, inkLabel }) {
+export function GraphCanvas({ curves, points, width = 400, height = 400, onCanvasClick, horizontalLine, inkStrokes, onInkStrokesChange, inkLabel, resetViewToken }) {
   const canvasRef = useRef(null)
   const boardElementRef = useRef(null)
   const boardInstanceRef = useRef(null)
   const boardObjectsRef = useRef([])
+  const previousResetViewTokenRef = useRef(resetViewToken)
   const [boardReady, setBoardReady] = useState(false)
   const [worldView, setWorldView] = useState(DEFAULT_VIEW)
   const [viewBounds, setViewBounds] = useState(DEFAULT_VIEW)
@@ -92,6 +93,19 @@ export function GraphCanvas({ curves, points, width = 400, height = 400, onCanva
     board.setBoundingBox([viewBounds.xMin, viewBounds.yMax, viewBounds.xMax, viewBounds.yMin], false)
     board.fullUpdate()
   }, [viewBounds, boardReady])
+
+  // Resetting a graph must be view-only: keep equations, draggable t, and
+  // freehand strokes intact while restoring both the JSXGraph board and the
+  // canvas fallback to their original x/y scale and center.
+  useEffect(() => {
+    // The initial render already starts at DEFAULT_VIEW. Only act when the
+    // header button increments its token, otherwise mounting would redraw
+    // the fallback canvas a second time for no user-visible change.
+    if (previousResetViewTokenRef.current === resetViewToken) return
+    previousResetViewTokenRef.current = resetViewToken
+    setWorldView({ ...DEFAULT_VIEW })
+    setViewBounds({ ...DEFAULT_VIEW })
+  }, [resetViewToken])
 
   useEffect(() => {
     const board = boardInstanceRef.current

@@ -26,3 +26,7 @@
 - `npx vitest run`: 23개 파일, 148개 테스트 통과.
 - `npx oxlint`: 실패 없음. `LinkedFunctionPanel.jsx`의 기존 effect 경고 2개만 유지.
 - `npx vite build`: 성공. JSXGraph 의존성의 `eval` 알림과 대형 번들 안내만 출력된다.
+
+## 보기 초기화
+
+원함수 `f(x) 그래프` 헤더의 `↻`는 식·파라미터·필기·`y=t` 위치를 바꾸지 않는다. 팬/휠 확대 또는 `보기 범위`에서 변경한 x/y 좌표창만 기본값 `x,y = -8..8`로 되돌린다.
